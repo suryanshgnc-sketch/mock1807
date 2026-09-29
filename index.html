@@ -83,8 +83,8 @@
 </main></div>
 <div id="app" hidden>
  <header><div class="logo"><img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests"><div><b>MDCCCVII TESTS</b><i>Independent JEE practice platform</i></div></div>
-  <div class="cand"><div class="av"><img id="candidatePhoto" alt="Candidate"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span></div></div></header>
- <div id="obar"><div class="exam-title"><b>JEE MAIN</b><span id="liveTestName">LIVE TEST</span></div><div id="tabs"></div><div class="exam-progress"><span id="progressText">0 / 75 answered</span><div><i id="progressBar"></i></div></div></div>
+  <div class="cand"><div class="av"><img id="candidatePhoto" alt="Candidate"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span> <span id="saveState" class="save-state" aria-live="polite">● SAVED</span></div></div></header>
+ <div id="obar"><div class="exam-title"><b>JEE MAIN</b><span id="liveTestName">LIVE TEST</span></div><div id="tabs"></div><div class="exam-progress"><span id="progressText">0 / 75 answered</span><span id="connectionState" class="connection-state">● ONLINE</span><div><i id="progressBar"></i></div></div></div>
  <main>
   <section id="left">
    <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>

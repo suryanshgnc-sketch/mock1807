@@ -47,7 +47,7 @@
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
+    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];render();
   }
@@ -79,11 +79,17 @@
   async function createAttempt(t){
     activeAttemptId=null;
     try{
-      const {data:{session}}=await sb.auth.getSession();if(!session){alert('Please sign in before starting this test.');return false;}
       const {data,error}=await sb.rpc('start_test_attempt',{p_test_id:Number(t.id)});
       if(error)throw error;
-      if(!data?.id)throw new Error('The server did not create an attempt.');
-      activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();startAttemptAutosave();return true;
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row?.id)throw new Error('The server did not create an attempt.');
+      activeAttemptId=row.id;S.backendAttemptId=row.id;
+      S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;
+      S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
+      // The server snapshot is authoritative for this attempt.
+      cfg.dur=S.serverDurationMinutes;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);
+      if(row.total_questions && Number(row.total_questions)!==N()) throw new Error('This test changed after loading. Refresh and try again.');
+      saveSess();startAttemptAutosave();return true;
     }catch(e){
       console.warn('Attempt could not be created:',e.message);
       alert(e.message||'You cannot start another attempt for this paper.');
@@ -92,51 +98,67 @@
   }
   async function syncAttempt(){
     if(!S?.backendAttemptId||S.done||!sb)return;
+    setSyncState('saving');
     try{
-      const answers=S.q.map((q,i)=>({attempt_id:S.backendAttemptId,question_no:i+1,response:q.a||null,marked_for_review:q.s>=3,answered_at:q.a?new Date().toISOString():null}));
-      const {error}=await sb.from('answers').upsert(answers,{onConflict:'attempt_id,question_no'});
+      const answers=S.q.map((q,i)=>({question_no:i+1,response:q.a||null,marked_for_review:q.s>=3}));
+      const {error}=await sb.rpc('save_attempt_answers',{p_attempt_id:S.backendAttemptId,p_answers:answers});
       if(error)throw error;
-      saveSess();
-    }catch(e){console.warn('Autosave failed:',e.message)}
+      saveSess();setSyncState('saved');
+    }catch(e){console.warn('Autosave failed:',e.message);setSyncState('offline');}
+  }
+  function setSyncState(state){
+    const a=document.getElementById('saveState'),b=document.getElementById('connectionState');
+    if(a){a.className='save-state '+state;a.textContent=state==='saving'?'● SAVING…':state==='offline'?'● NOT SAVED':'● SAVED';}
+    if(b){b.className='connection-state '+(state==='offline'?'offline':'online');b.textContent=state==='offline'?'● OFFLINE / RETRYING':'● ONLINE';}
   }
   function startAttemptAutosave(){
     clearInterval(syncTimer);syncTimer=setInterval(()=>syncAttempt(),10000);
+    window.addEventListener('online',()=>setSyncState('saved'));window.addEventListener('offline',()=>setSyncState('offline'));
+    setSyncState(navigator.onLine?'saved':'offline');
     window.addEventListener('beforeunload',()=>{try{navigator.sendBeacon?.('', '')}catch(e){}} ,{once:false});
   }
 
   async function finalizeAttempt(){
-    if(!S?.backendAttemptId)return;
-    clearInterval(syncTimer);
-    const answers=S.q.map((q,i)=>({attempt_id:S.backendAttemptId,question_no:i+1,response:q.a||null,marked_for_review:q.s>=3,answered_at:q.a?new Date().toISOString():null}));
+    if(!S?.backendAttemptId)return false;
+    clearInterval(syncTimer);setSyncState('saving');
     try{
-      let ae=null;
-      for(let attempt=0;attempt<3;attempt++){
-        const r=await sb.from('answers').upsert(answers,{onConflict:'attempt_id,question_no'});ae=r.error;if(!ae)break;
-        await new Promise(r=>setTimeout(r,350*(attempt+1)));
-      }
-      if(ae)throw ae;
-      const attempted=S.q.filter(q=>q.a!=='').length;
-      const elapsed=Math.max(0,Math.round((cfg.dur*60000-(S.rem||0)*1000)/1000));
-      const {error:ue}=await sb.from('attempts').update({status:'submitted',submitted_at:new Date().toISOString(),unanswered_count:S.q.length-attempted,time_taken_seconds:elapsed}).eq('id',S.backendAttemptId);
-      if(ue)throw ue;
-    }catch(e){console.warn('Could not save submitted attempt:',e.message);alert('Your answers are saved on this device, but the server could not confirm the submission. Keep this page open and contact the administrator before closing it.')}
+      const answers=S.q.map((q,i)=>({question_no:i+1,response:q.a||null,marked_for_review:q.s>=3}));
+      const {data,error}=await sb.rpc('submit_test_attempt',{p_attempt_id:S.backendAttemptId,p_answers:answers});
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(row?.status && row.status!=='submitted')throw new Error('The server did not confirm submission.');
+      S.serverSubmittedAt=row?.submitted_at||new Date().toISOString();
+      S.rem=0;saveSess();setSyncState('saved');return true;
+    }catch(e){
+      console.warn('Could not submit attempt:',e.message);setSyncState('offline');
+      alert('Submission was not confirmed by the server. Your answers remain saved locally. Keep this page open and retry Submit.');return false;
+    }
   }
   function patchFinish(){
     if(window.__backendFinishPatched)return;
     const original=window.finish; if(typeof original!=='function')return;
-    window.finish=async function(){if(finishing)return;finishing=true;try{await finalizeAttempt()}finally{original();finishing=false}};
+    window.finish=async function(){if(finishing)return;finishing=true;try{const ok=await finalizeAttempt();if(ok)original()}finally{finishing=false}};
     window.__backendFinishPatched=true;
   }
   function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(!document.hidden)tick()},1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
   async function resumeBackendTest(saved){
     try{
-      const t=tests.find(x=>Number(x.id)===Number(saved.backendTestId));
+      if(!saved.backendAttemptId)throw new Error('No active server attempt was found.');
+      const {data,error}=await sb.rpc('get_attempt_resume',{p_attempt_id:saved.backendAttemptId});
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row?.id)throw new Error('This attempt is no longer resumable.');
+      const t=tests.find(x=>Number(x.id)===Number(row.test_id));
       if(!t||!t.paper_url)throw new Error('The saved test paper could not be found.');
-      const {data:sign,error}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
-      if(error||!sign?.signedUrl)throw error||new Error('Could not reopen the question paper.');
+      const {data:sign,error:se}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
+      if(se||!sign?.signedUrl)throw se||new Error('Could not reopen the question paper.');
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
-      cfg.per=(Number(t.total_questions)||75)/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');
-      begin();
+      cfg.per=(Number(row.total_questions)||75)/3;cfg.dur=Number(row.duration_minutes)||180;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);setOrder('PCM');
+      S.backendAttemptId=row.id;S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
+      S.q=Array.from({length:cfg.per*SUB.length},(_,i)=>({a:'',s:0,t:0}));
+      (row.answers||[]).forEach(a=>{const i=Number(a.question_no)-1;if(S.q[i]){S.q[i].a=a.response||'';S.q[i].s=a.marked_for_review?(a.response?4:3):(a.response?2:1);}});
+      S.cur=Math.min(Number(saved.cur)||0,S.q.length-1);S.q[S.cur].s=S.q[S.cur].s||1;
+      begin();startAttemptAutosave();
     }catch(e){alert(e.message||'Could not reopen the saved test.');}
   }
   window.resumeBackendTest=resumeBackendTest;
@@ -158,6 +180,6 @@
     if(st){st.textContent=u?.user_metadata?.full_name||u?.user_metadata?.name||'Signed in';sm.textContent=u?.email?'Synced to '+u.email:'Your attempts stay synced';}
   }
 
-  window.refreshBackendTests=load;
+  window.syncBackendNow=syncAttempt; window.refreshBackendTests=load;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

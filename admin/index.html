@@ -34,6 +34,7 @@
         <button class="nav" data-view="students">Students</button>
         <button class="nav" data-view="attempts">Attempts</button>
         <button class="nav" data-view="analytics">Analytics</button>
+        <button class="nav" data-view="audit">Audit Log</button>
       </nav>
       <div class="side-bottom">
         <div id="adminIdentity" class="identity"></div>
@@ -78,7 +79,7 @@
     </div>
   </div>
 
-  <div id="studentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-student></div><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">STUDENT CONTROL</div><h2>Edit student</h2></div><button class="icon-btn" data-close-student>×</button></div><form id="studentForm"><input type="hidden" name="id"><div class="form-grid"><label class="wide">Display name<input name="name" required maxlength="80" placeholder="Student name"></label><label class="wide">Account status<select name="blocked"><option value="false">Active — can access tests</option><option value="true">Blocked — cannot access tests</option></select></label></div><div id="studentStats" class="student-stats"></div><div id="studentFormError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-student>Cancel</button><button type="submit" class="primary">Save student</button></div></form></div></div>
+  <div id="studentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-student></div><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">STUDENT CONTROL</div><h2>Edit student</h2></div><button class="icon-btn" data-close-student>×</button></div><form id="studentForm"><input type="hidden" name="id"><div class="form-grid"><label class="wide">Display name<input name="name" required maxlength="80" placeholder="Student name"></label><label class="wide">Account status<select name="blocked"><option value="false">Active — can access tests</option><option value="true">Blocked — cannot access tests</option></select></label></div><div id="studentStats" class="student-stats"></div><div class="grant-box"><div class="eyebrow">ATTEMPT CONTROL</div><div class="grant-grid"><select id="grantTest"></select><input id="grantCount" type="number" min="1" max="20" value="1" placeholder="Attempts"><input id="grantNote" maxlength="160" placeholder="Reason / note"><button type="button" class="ghost" id="grantAttemptBtn">+ Grant attempt</button></div></div><div id="studentFormError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-student>Cancel</button><button type="submit" class="primary">Save student</button></div></form></div></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="admin.js?v=5"></script>

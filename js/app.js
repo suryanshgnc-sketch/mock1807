@@ -47,7 +47,9 @@ setOrder(cfg.order);let S=null,timerId=null,pdfUrl=null,pdfZoom=100,pdfName='Upl
 /* ---------- Helpers ---------- */
 const N=()=>cfg.per*SUB.length,sub=i=>Math.floor(i/cfg.per),isNum=i=>i%cfg.per>=cfg.per-5;
 const saveSess=()=>{if(!S)return;if(!S.done)S.rem=Math.round((S.endAt-Date.now())/1000);Store.set('nta_sess',S)};
-setInterval(saveSess,5000);addEventListener('beforeunload',saveSess);
+setInterval(saveSess,5000);addEventListener('beforeunload',e=>{saveSess();if(S&&!S.done){e.preventDefault();e.returnValue='Your test is still in progress. Are you sure you want to leave?';}});
+addEventListener('keydown',e=>{if(!S||S.done)return;if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.key==='ArrowRight'){e.preventDefault();nav(1)}else if(e.key==='ArrowLeft'){e.preventDefault();nav(-1)}else if(e.key.toLowerCase()==='m'){e.preventDefault();act('mr')}else if(e.key.toLowerCase()==='c'){e.preventDefault();act('cl')}});
+
 
 /* ---------- Modal / Settings ---------- */
 function modal(h){$('#dbox').innerHTML=h;$('#dlg').className='modal'+(S?'':' dk');$('#dlg').hidden=false}
@@ -149,7 +151,7 @@ function act(a){
  if(S.cur<N()-1)go(S.cur+1);else render();
 }
 function nav(d){const i=S.cur+d;if(i>=0&&i<N())go(i)}
-function setAns(v){S.q[S.cur].a=v;if(S.q[S.cur].s<2)S.q[S.cur].s=2;saveSess();renderPal();updateResponseState()}
+let __syncDebounce=0;function setAns(v){S.q[S.cur].a=v;if(S.q[S.cur].s<2)S.q[S.cur].s=2;saveSess();renderPal();updateResponseState();if(window.syncBackendNow){clearTimeout(__syncDebounce);__syncDebounce=setTimeout(()=>window.syncBackendNow(),650)}}
 
 /* ---------- Renderers ---------- */
 function render(){

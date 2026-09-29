@@ -1,66 +1,46 @@
-# JEE Mock CBT
+# MDCCCVII TESTS — V10
 
-NTA-style computer-based test simulator for JEE Main / Advanced practice. Upload any paper PDF, attempt it in a real CBT interface, add the answer key, and get a detailed performance analysis. Runs 100% in the browser: no backend, no build step.
+Production-focused CBT + admin control build.
 
-> Unofficial practice tool, not affiliated with NTA.
+## Database setup
 
-## Project structure
+### Fresh Supabase project
+Run **`RUN-ALL-SQL-V10.sql`** once in Supabase → SQL Editor.
 
-```
-jee-mock-cbt/
-├── index.html              Entry point (markup only)
-├── css/
-│   ├── style.css           Base CBT layout: palette, timer, exam screen
-│   └── theme.css           Visual refresh + analysis/gamification styles
-├── js/
-│   ├── app.js              Storage, exam engine, evaluation, PDF viewer, cloud sync, home
-│   └── analysis.js         Advanced analysis dashboard + XP/level/streak/badges
-├── assets/
-│   └── favicon.svg
-├── .github/workflows/
-│   └── pages.yml           Optional auto-deploy to GitHub Pages
-├── .nojekyll               Tells Pages to serve files as-is
-├── .gitignore
-├── LICENSE                 MIT
-└── README.md
-```
+### Existing MDCCCVII database
+Run **`MDCCCVII-DB-V10.sql`** once after your existing setup.
 
-## Deploy on GitHub Pages
+Do not run the files inside `legacy-sql/` for the V10 build; they are retained only for reference.
 
-1. Create a new GitHub repository and push these files to the `main` branch.
-2. Go to **Settings → Pages**.
-3. Under **Build and deployment** choose either:
-   - **Deploy from a branch** → `main` / `(root)`, or
-   - **GitHub Actions** (uses `.github/workflows/pages.yml`).
-4. Your site goes live at `https://<username>.github.io/<repo>/`.
+## V10 fixes
 
-To run locally, just open `index.html`. No server needed.
+- Server-authoritative test start and expiry timestamps.
+- Immutable per-attempt snapshot of duration, question count and marking scheme.
+- Server-side answer autosave RPC.
+- Server-side atomic submission RPC.
+- Server resume from Supabase answers/timer state.
+- Expired attempts can still be submitted once, with elapsed time capped by the server.
+- Re-attempt limits enforced server-side.
+- Per-student extra attempt grants.
+- First submitted attempt only is eligible for leaderboard ranking; re-attempts do not create leaderboard entries.
+- Per-test leaderboard enable/disable.
+- Test archiving instead of destructive deletion.
+- Test scoring/question-paper settings lock after the first attempt.
+- Admin force-submit and invalidate-attempt controls.
+- Admin audit log.
+- Admin test analytics and attempt status visibility.
+- PWA install button + manifest + service worker.
+- MDCCCVII branding/favicon/PWA icons.
+- CBT save/connection state indicator.
 
-## Features
+## Deployment
 
-- **Exam interface**: NTA-style palette (5 states), subject tabs, countdown timer, on-screen numeric keypad, mark for review, resume after refresh.
-- **Test types**: Full mock, single subject, or custom questions, time and subject order.
-- **PDF paper viewer**: the paper is stored in your browser (IndexedDB) and reused.
-- **Evaluation**: auto-match with a pasted or PDF answer key (letters A–D are read as 1–4), or manual self-check.
-- **Analysis**: score donut, accuracy, attempt rate, marks lost to negatives, auto-generated insights (rushed guesses, stuck questions, MCQ vs numerical accuracy, review-mark effectiveness), subject breakdown, time-per-question chart, filterable question review.
-- **Progress**: score trend, subject accuracy, test history.
-- **Gamification**: XP, levels, day streak, badges.
-- **Backup**: JSON export/import and optional private GitHub Gist sync.
+1. Upload the site files to your static host.
+2. Run the SQL above.
+3. Hard refresh once after deployment (`Ctrl+Shift+R`) so the V10 service worker replaces the previous cache.
+4. Sign in as admin and verify the Control Center.
+5. Create a small test and verify start → answer → refresh/resume → submit → result.
 
-## Answer key formats
+## Important
 
-Paste text like `1 2 2 4 3 1 ...` (plain list) or `1 B 2 D 3 A ...` (question/answer pairs). PDF key import needs internet once, to load pdf.js.
-
-## Data and privacy
-
-Everything lives in `localStorage` and `IndexedDB` on your device. Nothing is uploaded, except when you use Gist sync with your own token (stored locally).
-
-## Customising
-
-- Marking scheme, duration, questions per subject: **Settings** in the app.
-- Colours: CSS variables at the top of `css/theme.css`.
-- XP and badge rules: bottom of `js/analysis.js`.
-
-## License
-
-MIT
+The server is now authoritative for exam time and submission state. The browser timer is only a display.

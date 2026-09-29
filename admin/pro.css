@@ -43,3 +43,5 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--ac)!importa
 .stg{animation:up .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0)*60ms)}
 #keyPanel{background:var(--panel)!important;border-color:var(--line)!important}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.grant-box{margin-top:18px;padding:16px;border:1px solid #2a2d33;border-radius:16px;background:#101216}.grant-grid{display:grid;grid-template-columns:1.4fr .5fr 1fr auto;gap:8px;margin-top:10px}.grant-grid input,.grant-grid select{min-width:0}@media(max-width:760px){.grant-grid{grid-template-columns:1fr 1fr}.grant-grid input:last-of-type,.grant-grid button{grid-column:1/-1}}

@@ -4,3 +4,5 @@
 
 /* v6 admin control center */
 .command-hero{min-height:120px}.hero-actions{display:flex;gap:9px;flex-wrap:wrap}.actions{white-space:nowrap}.student-cell{display:flex;align-items:center;gap:10px}.student-cell img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}.student-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.student-stats>div{padding:14px;border:1px solid var(--line);border-radius:12px;background:#0b1220}.student-stats b{display:block;font-size:22px}.student-stats span{display:block;color:var(--muted);font-size:11px;margin-top:4px}@media(max-width:700px){.student-stats{grid-template-columns:1fr 1fr 1fr}.actions .mini{margin:2px 0}}
+
+.grant-box{margin-top:18px;padding:16px;border:1px solid #2a2d33;border-radius:16px;background:#101216}.grant-grid{display:grid;grid-template-columns:1.4fr .5fr 1fr auto;gap:8px;margin-top:10px}.grant-grid input,.grant-grid select{min-width:0}@media(max-width:760px){.grant-grid{grid-template-columns:1fr 1fr}.grant-grid input:last-of-type,.grant-grid button{grid-column:1/-1}}
