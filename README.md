@@ -1,6 +1,6 @@
 # JEE Mock CBT
 
-NTA-style computer-based test simulator for JEE Main / Advanced practice. Upload any paper PDF, attempt it in a real CBT interface, add the answer key, and get a detailed performance analysis. Runs 100% in the browser: no backend, no build step.
+NTA-style computer-based test simulator for JEE Main / Advanced practice. Upload any paper PDF, attempt it in a real CBT interface, add the answer key, and get a detailed performance analysis. Runs as a static site with Supabase Google authentication added in Step 1. The exam engine and PDF workflow remain browser-based for now.
 
 > Unofficial practice tool, not affiliated with NTA.
 
@@ -64,3 +64,13 @@ Everything lives in `localStorage` and `IndexedDB` on your device. Nothing is up
 ## License
 
 MIT
+
+
+## Backend setup — Step 1
+
+The site now has a Supabase Google-login gate. The existing PDF workflow is unchanged:
+all manually supplied GTM PDFs still go directly inside `GTM-PDFS/`.
+
+The browser uses the Supabase publishable key. Do not add a Supabase secret/service-role key to this repository.
+
+Next backend steps will connect authenticated attempts, answers, scores and the admin dashboard.
