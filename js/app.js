@@ -59,11 +59,45 @@ const KEYIDB={
  async get(){try{const d=await this.db();return await new Promise(r=>{const q=d.transaction('f').objectStore('f').get('key');q.onsuccess=()=>r(q.result);q.onerror=()=>r()})}catch(e){}}
 };
 let keyPdfUrl=null,keyPdfName='Answer Key PDF';
-async function restoreKeyPdf(){const r=await KEYIDB.get();if(r&&r.blob){keyPdfUrl=URL.createObjectURL(r.blob);keyPdfName=r.name}}
-function showKeyPdf(f){if(!f)return;if(keyPdfUrl)URL.revokeObjectURL(keyPdfUrl);keyPdfUrl=URL.createObjectURL(f);keyPdfName=f.name;KEYIDB.set({blob:f,name:f.name});drawRes()}
-function manualSet(i,v){S.man=S.man||[];S.man[i]=v;S.q[i].manual=v;drawRes();dash()}
-function manualAll(v){S.man=S.man||[];S.q.forEach((q,i)=>{if(q.a!=='')S.man[i]=v});drawRes();dash()}
-function jumpResult(i){const el=document.getElementById('resp-'+i);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
+async function restoreKeyPdf(){
+ const r=await KEYIDB.get();
+ if(r&&r.blob){keyPdfUrl=URL.createObjectURL(r.blob);keyPdfName=r.name;if(S&&S.mode==='B'&&!$('#res').hidden)drawRes();}
+}
+function showKeyPdf(f){
+ if(!f)return;
+ if(keyPdfUrl)URL.revokeObjectURL(keyPdfUrl);
+ keyPdfUrl=URL.createObjectURL(f); keyPdfName=f.name;
+ KEYIDB.set({blob:f,name:f.name});
+ drawRes();
+}
+function manualSet(i,v){
+ S.man=S.man||[];
+ S.man[i]=v;
+ S.q[i].manual=v;
+ saveSess();
+ if(S.done)saveHist();
+ drawRes();
+ dash();
+}
+function manualAll(v){
+ S.man=S.man||[];
+ S.q.forEach((q,i)=>{if(q.a!==''){S.man[i]=v;q.manual=v}});
+ saveSess();
+ if(S.done)saveHist();
+ drawRes();
+ dash();
+}
+function jumpResult(i){
+ const el=document.getElementById('resp-'+i);
+ if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+ const n=document.getElementById('manualJump');
+ if(n)n.value=String(i);
+}
+function manualJump(i){
+ i=Number(i);
+ if(!Number.isFinite(i)||i<0||i>=N())return;
+ jumpResult(i);
+}
 function loadPdf(f){if(!f)return;IDB.set({blob:f,name:f.name});if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl=URL.createObjectURL(f);pdfName=f.name;pdfView()}
 function pdfView(){
  if(!pdfUrl)return;$('#zl').textContent=pdfZoom+'%';
@@ -90,7 +124,7 @@ function resume(){
 function begin(){
  $('#land').hidden=true;$('#res').hidden=true;$('#app').hidden=false;
  $('#cn').textContent=S.name;$('#cr').textContent=S.roll;
- clearInterval(timerId);timerId=setInterval(tick,1000);tick();render();if(!pdfUrl)restorePdf();
+ clearInterval(timerId);timerId=setInterval(tick,1000);tick();render();if(!pdfUrl)restorePdf();restoreKeyPdf();
  try{document.documentElement.requestFullscreen()}catch(e){}
 }
 function tick(){
@@ -187,21 +221,115 @@ function showRes(){
  $('#land').hidden=true;$('#app').hidden=true;$('#res').hidden=false;drawRes();
 }
 function drawRes(){
- const per=cfg.per;let g='';
+ const per=cfg.per;
+ let g='';
  for(let i=0;i<N();i++){
   const q=S.q[i],v=S.key[i]||'',m=S.man&&S.man[i];
-  const pre=i%per===0?`<div style="grid-column:1/-1;font-weight:bold;color:#337ab7;margin-top:8px">${SUB[sub(i)]}</div>`:'';
-  if(S.mode==='B') g+=pre+`<div class="resp-row ${q.a===''?'muted':''}" id="resp-${i}"><b>Q${i%per+1}</b><span>Your option: <strong>${q.a===''?'—':esc(q.a)}</strong></span><span class="manual-state ${m===true?'ok':m===false?'bad':''}">${m===true?'Correct':m===false?'Incorrect':'Not checked'}</span><button class="mini ${m===true?'sel':''}" onclick="manualSet(${i},true)" ${q.a===''?'disabled':''}>✓ Correct</button><button class="mini ${m===false?'sel bad':''}" onclick="manualSet(${i},false)" ${q.a===''?'disabled':''}>✕ Wrong</button></div>`;
-  else g+=pre+`<label class="keyrow"><b>${i%per+1}</b><span>Your: <strong>${q.a===''?'—':esc(q.a)}</strong></span><input type="text" value="${esc(v)}" placeholder="Key" oninput="S.key[${i}]=this.value.toUpperCase()"><span>${v?((({A:'1',B:'2',C:'3',D:'4'}[v.toUpperCase()]||v)===q.a)?'✓':''):'—'}</span></label>`;
+  const pre=i%per===0?`<div class="resp-section-title">${SUB[sub(i)]}</div>`:'';
+  const status=m===true?'correct':m===false?'wrong':'pending';
+  const statusText=m===true?'CORRECT':m===false?'WRONG':'NOT CHECKED';
+  const attempted=q.a!=='';
+  if(S.mode==='B'){
+   g+=pre+`
+   <article class="manual-q ${status} ${attempted?'':'skipped'}" id="resp-${i}">
+    <div class="manual-q-top">
+      <div class="q-id"><span>Q</span><b>${i%per+1}</b></div>
+      <div class="q-meta"><b>${SUB[sub(i)]}</b><small>${attempted?'Attempted':'Not attempted'}</small></div>
+      <span class="manual-status ${status}">${statusText}</span>
+    </div>
+    <div class="answer-compare">
+      <div class="answer-cell yours"><small>YOUR MARKED ANSWER</small><strong>${attempted?esc(q.a):'—'}</strong></div>
+      <div class="compare-arrow">VS</div>
+      <div class="answer-cell key"><small>ANSWER KEY</small><strong>${v?esc(v):'Read PDF →'}</strong></div>
+    </div>
+    <div class="manual-actions">
+      <button class="verify-btn yes ${m===true?'active':''}" onclick="manualSet(${i},true)" ${attempted?'':'disabled'}>✓ Correct</button>
+      <button class="verify-btn no ${m===false?'active':''}" onclick="manualSet(${i},false)" ${attempted?'':'disabled'}>✕ Wrong</button>
+      <button class="verify-jump" onclick="manualJump(${i})">Focus</button>
+    </div>
+   </article>`;
+  } else {
+   g+=pre+`<div class="keyrow"><b>${i%per+1}</b><span>Your: <strong>${q.a===''?'—':esc(q.a)}</strong></span><input type="text" value="${esc(v)}" placeholder="Key" oninput="S.key[${i}]=this.value.toUpperCase()"><span>${v?((({A:'1',B:'2',C:'3',D:'4'}[v.toUpperCase()]||v)===q.a)?'✓':''):'—'}</span></div>`;
+  }
  }
- $('#res').innerHTML=`<div class="card"><h2 style="margin-top:0">Results &amp; Evaluation – ${esc(S.name)}</h2>
- <p><b>Evaluation mode:</b> <select onchange="S.mode=this.value;drawRes()"><option value="A" ${S.mode==='A'?'selected':''}>A – Auto-match with answer key</option><option value="B" ${S.mode==='B'?'selected':''}>B – Manual verification</option></select></p>
- <div class="answer-tools">
- ${S.mode==='A'?`<textarea id="paste" rows="3" placeholder="Paste key: 1 A, 2 C, 3 B … or Q1=A Q2=C …"></textarea><div><button class="btn w" onclick="pasteKey()">Apply Pasted Key</button> <label class="btn o">Upload Answer-Key PDF<input type="file" accept="application/pdf" hidden onchange="keyPdf(this.files[0])"></label></div>`:`<div><b>Manual verification</b> — your recorded responses are on the left and the official answer-key PDF is on the right. Mark each attempted question ✓ or ✕.</div><div><label class="btn o">Upload Answer-Key PDF<input type="file" accept="application/pdf" hidden onchange="showKeyPdf(this.files[0])"></label> <button class="btn w" onclick="manualAll(true)">Mark all attempted correct</button> <button class="btn r" onclick="manualAll(false)">Mark all attempted wrong</button></div>`}
- </div>
- ${S.mode==='B'?`<div class="verify-grid"><section class="verify-left"><div class="verify-head"><b>Your Recorded Responses</b><span>Click ✓ / ✕ to verify</span></div><div class="manual-list">${g}</div></section><section class="verify-right"><div class="verify-head"><b>Official Answer-Key PDF</b><span>${esc(keyPdfName)}</span></div>${keyPdfUrl?`<embed class="key-frame" type="application/pdf" src="${keyPdfUrl}#page=1&zoom=page-width">`:`<div class="pdf-empty"><b>No answer-key PDF uploaded.</b><br>Upload the official PDF above and keep it open here while checking.</div>`}</section></div>`:`<div class="kg" style="margin:10px 0">${g}</div>`}
- <button class="btn g" onclick="dash()">Evaluate</button> <button class="btn" onclick="downloadReport()">Download Response Sheet (PDF)</button> <button class="btn w" onclick="location.reload()">Home</button><div id="dash"></div></div>`;
+ const checked=(S.man||[]).filter(x=>x===true||x===false).length;
+ const attempted=S.q.filter(q=>q.a!=='').length;
+ const correct=(S.man||[]).filter(x=>x===true).length;
+ const wrong=(S.man||[]).filter(x=>x===false).length;
+
+ $('#res').innerHTML=`<div class="results-shell">
+  <div class="results-top">
+   <div><span class="result-kicker">POST-TEST WORKSPACE</span><h2>Response Sheet &amp; Evaluation</h2><p>${esc(S.name)} · ${esc(S.type||'Test')} · ${esc(S.date)}</p></div>
+   <button class="btn w" onclick="location.reload()">Home</button>
+  </div>
+  <div class="mode-switch">
+   <button class="${S.mode==='A'?'active':''}" onclick="S.mode='A';drawRes()">Auto Evaluation</button>
+   <button class="${S.mode==='B'?'active':''}" onclick="S.mode='B';drawRes()">Manual Checking</button>
+  </div>
+
+  ${S.mode==='B'?`
+  <div class="manual-toolbar">
+    <div class="manual-summary">
+      <div><b>${attempted}</b><span>Attempted</span></div>
+      <div class="good"><b>${correct}</b><span>Correct</span></div>
+      <div class="bad"><b>${wrong}</b><span>Wrong</span></div>
+      <div class="pending"><b>${Math.max(0,attempted-checked)}</b><span>Pending</span></div>
+    </div>
+    <div class="manual-tools">
+      <label class="btn o upload-key">Upload Answer-Key PDF
+       <input type="file" accept="application/pdf" hidden onchange="showKeyPdf(this.files[0])">
+      </label>
+      <select id="manualJump" onchange="manualJump(this.value)">
+       <option value="">Jump to question…</option>
+       ${S.q.map((q,i)=>`<option value="${i}">Q${i%per+1} · ${SUB[sub(i)]}${q.a!==''?' · '+esc(q.a):' · —'}</option>`).join('')}
+      </select>
+      <button class="btn w" onclick="manualAll(true)">✓ Mark attempted correct</button>
+      <button class="btn r" onclick="manualAll(false)">✕ Mark attempted wrong</button>
+    </div>
+  </div>
+
+  <div class="key-file-banner ${keyPdfUrl?'ready':''}">
+    <span class="file-dot"></span>
+    <div><b>${keyPdfUrl?esc(keyPdfName):'No answer-key PDF uploaded'}</b>
+    <small>${keyPdfUrl?'Answer key is open beside your response list. Use the PDF controls to zoom/search and the question navigator to verify rapidly.':'Upload the official answer-key PDF above to begin side-by-side checking.'}</small></div>
+  </div>
+
+  <div class="manual-workspace">
+    <section class="pdf-pane paper-pane">
+      <div class="pane-head"><div><b>Your Question Paper</b><small>${esc(pdfName||'No paper uploaded')}</small></div><label>Page <input id="paperPage" type="number" min="1" value="1" onchange="paperResultPage()"></label></div>
+      ${pdfUrl?`<embed id="paperResultPdf" type="application/pdf" src="${pdfUrl}#page=1&zoom=page-width">`:`<div class="pdf-empty"><b>No question paper PDF found.</b><br>Upload the paper from the test screen first.</div>`}
+    </section>
+    <section class="manual-list-pane">
+      <div class="pane-head sticky-head"><div><b>Compare &amp; Mark</b><small>Click Correct / Wrong after reading the key</small></div><span class="kbd">← / → to browse</span></div>
+      <div class="manual-list">${g}</div>
+    </section>
+    <section class="pdf-pane key-pane">
+      <div class="pane-head"><div><b>Official Answer Key</b><small>${keyPdfUrl?esc(keyPdfName):'Upload PDF'}</small></div><label>Page <input id="keyPage" type="number" min="1" value="1" onchange="keyResultPage()"></label></div>
+      ${keyPdfUrl?`<embed id="keyResultPdf" class="key-frame" type="application/pdf" src="${keyPdfUrl}#page=1&zoom=page-width">`:`<div class="pdf-empty upload-empty"><b>Answer key goes here</b><br>Use <strong>Upload Answer-Key PDF</strong> above.</div>`}
+    </section>
+  </div>
+  `:`<div class="auto-eval-panel">
+    <textarea id="paste" rows="3" placeholder="Paste key: 1 A, 2 C, 3 B … or Q1=A Q2=C …"></textarea>
+    <div><button class="btn w" onclick="pasteKey()">Apply Pasted Key</button> <label class="btn o">Upload Answer-Key PDF<input type="file" accept="application/pdf" hidden onchange="keyPdf(this.files[0])"></label></div>
+    <div class="kg" style="margin:10px 0">${g}</div>
+  </div>`}
+
+  <div class="result-actions">
+   <button class="btn g" onclick="dash()">Evaluate / Refresh Analysis</button>
+   <button class="btn" onclick="downloadReport()">Download Response Sheet (PDF)</button>
+  </div>
+  <div id="dash"></div>
+ </div>`;
  if(S.key.length||S.mode==='B')dash();
+}
+
+function paperResultPage(){
+ const p=Math.max(1,Number($('#paperPage').value)||1);
+ const e=$('#paperResultPdf'); if(e)e.src=pdfUrl+`#page=${p}&zoom=page-width`;
+}
+function keyResultPage(){
+ const p=Math.max(1,Number($('#keyPage').value)||1);
+ const e=$('#keyResultPdf'); if(e)e.src=keyPdfUrl+`#page=${p}&zoom=page-width`;
 }
 function downloadReport(){dash();const w=window.open('','_blank');if(!w)return print();w.document.write(`<html><head><title>JEE Response Sheet</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #aaa;padding:5px}th{background:#eee}.head{display:flex;justify-content:space-between}</style></head><body>${$('#report').innerHTML}</body></html>`);w.document.close();w.focus();setTimeout(()=>w.print(),300)}
 function pasteKey(){applyKey($('#paste').value)}
