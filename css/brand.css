@@ -100,3 +100,22 @@
 @media(prefers-reduced-motion:reduce){.x-copy h1 .hl>span,.x-lead,.x-cta,.x-proof{animation:none!important;opacity:1;transform:none}.rv{opacity:1;transform:none;transition:none}.x-marq>div,.x-con,.x-rank,.v-pal u,.v-clock:before,.v-clock i,.v-lock{animation:none!important}.v-bars u{height:var(--h)}.v-ring .rg{stroke-dashoffset:20}}
 
 #profileBanner{margin-top:26px}#profileBanner button,#profileBanner .btn{background:var(--g)!important;color:#061006!important;border-radius:9px!important;font-weight:800!important}
+
+/* scheduled tests: countdown UI */
+.x-main .bt-grid{align-items:stretch}
+.nt{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:28px;flex-wrap:wrap;padding:34px 36px;border-radius:22px;border:1px solid var(--ln2);background:radial-gradient(600px 240px at 100% 0%,rgba(134,255,63,.14),transparent 70%),#080c09}
+.nt h3{margin:14px 0 8px;font-size:clamp(26px,3.4vw,40px);line-height:1.05}.nt p{margin:0 0 12px;color:var(--mu);font-size:15px}
+.cd{margin:14px 0 4px}.cd>span{display:block;font:700 10px var(--mo);letter-spacing:.2em;text-transform:uppercase;color:#7d897f;margin-bottom:8px}
+.cd-t{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cd-t div{padding:10px 4px;text-align:center;border:1px solid var(--ln);border-radius:10px;background:#0a100c}
+.cd-t b{display:block;font:700 22px var(--mo);color:#fff;font-variant-numeric:tabular-nums}.cd-t small{font:700 9px var(--mo);letter-spacing:.14em;text-transform:uppercase;color:var(--g)}
+.cd-t.big{gap:12px}.cd-t.big div{min-width:86px;padding:18px 8px;border-color:var(--ln2)}.cd-t.big b{font-size:clamp(30px,4vw,48px)}
+.bt-cal{display:inline-block;margin-top:10px;font-size:13px;font-weight:700;color:var(--g);text-decoration:none}.bt-cal:hover{text-decoration:underline}
+.x-main .bt-card.is-live{border-color:var(--ln2)!important;box-shadow:0 0 0 1px rgba(134,255,63,.1),0 30px 70px -40px rgba(134,255,63,.35)}
+.x-main .bt-card .bt-btn[disabled]{background:#111a13!important;color:#6d7b70!important;cursor:not-allowed;border:1px solid var(--ln)!important}
+.x-main .bt-pill.live:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--g);margin-right:7px;animation:xd 1.8s ease-out infinite}
+.x-main .bt-btn{width:100%;margin-top:12px;padding:13px!important;border:0}
+@media(max-width:600px){.nt{padding:24px}.cd-t.big div{min-width:0}}
+/* login gate: brand colours (old blue/purple glow removed) */
+#authGate{background:#050706!important}#authGate:before{background:radial-gradient(circle,rgba(134,255,63,.16),transparent 65%)!important;opacity:.7!important}#authGate:after{background:radial-gradient(circle,rgba(134,255,63,.09),transparent 65%)!important;opacity:.6!important}
+#authGate .auth-card{background:rgba(9,13,10,.94)!important}
