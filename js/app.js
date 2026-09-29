@@ -352,6 +352,52 @@ async function cloud(dir,quiet){
 addEventListener('keydown',e=>{
  if(S&&!S.done&&!$('#app').hidden&&$('#dlg').hidden&&!e.ctrlKey&&!e.metaKey&&!/^F\d+$/.test(e.key))e.preventDefault();
 },true);
+
+/* ---------- Preloaded GTM schedule ----------
+   Put ALL GTM PDFs directly in /GTM-PDFS using the exact filenames shown below.
+   There is only ONE drop-in folder: GTM-PDFS. The browser locks each test until
+   09:00 local time on its date. Once released, it stays unlocked forever.
+*/
+const GTM_SCHEDULE=[
+ {id:'GTM-01',date:'2026-10-03',time:'09:00',qp:'GTM-01_QP.pdf',key:'GTM-01_Final Key.pdf',sol:'GTM-01_Key & Sols.pdf'},
+ {id:'GTM-02',date:'2026-10-10',time:'09:00',qp:'GTM-02_QP.pdf',key:'GTM-02_Final Key.pdf',sol:'GTM-02_Key & Sols.pdf'},
+ {id:'GTM-03',date:'2026-10-17',time:'09:00',qp:'GTM-03_QP.pdf',key:'GTM-03_Final Key.pdf',sol:'GTM-03_Key & Sols.pdf'},
+ {id:'GTM-04',date:'2026-10-24',time:'09:00',qp:'GTM-04_QP.pdf',key:'GTM-04_Final Key.pdf',sol:'GTM-04_Key & Sols.pdf'},
+ {id:'GTM-05',date:'2026-10-31',time:'09:00',qp:'GTM-05_QP.pdf',key:'GTM-05_Final Key.pdf',sol:'GTM-05_Key & Sols.pdf'},
+ {id:'GTM-06',date:'2026-11-07',time:'09:00',qp:'GTM-06_QP.pdf',key:'GTM-06_Final Key.pdf',sol:'GTM-06_Key & Sols.pdf'},
+ {id:'GTM-07',date:'2026-11-14',time:'09:00',qp:'GTM-07_QP.pdf',key:'GTM-07_Final Key.pdf',sol:'GTM-07_Key & Sols.pdf'},
+ {id:'GTM-08',date:'2026-11-21',time:'09:00',qp:'GTM-08_QP.pdf',key:'GTM-08_Final Key.pdf',sol:'GTM-08_Key & Sols.pdf'},
+ {id:'GTM-09',date:'2026-11-28',time:'09:00',qp:'GTM-09_QP.pdf',key:'GTM-09_Final Key.pdf',sol:'GTM-09_Key & Sols.pdf'}
+];
+const gtmDate=x=>new Date(`${x.date}T${x.time}:00`);
+const gtmReleased=x=>Date.now()>=gtmDate(x).getTime();
+const gtmPath=(x,file)=>`GTM-PDFS/${encodeURIComponent(file).replace(/%2F/g,'/')}`;
+const gtmParts=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/86400000);ms%=86400000;const h=Math.floor(ms/3600000);ms%=3600000;const m=Math.floor(ms/60000);const s=Math.floor(ms/1000)%60;return {d,h,m,s}};
+function gtmFmtDate(x){return gtmDate(x).toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric',weekday:'short'})}
+function gtmNext(){return GTM_SCHEDULE.find(x=>!gtmReleased(x))||null}
+function gtmLaunch(x){
+ if(!gtmReleased(x)){alert(`${x.id} opens on ${gtmFmtDate(x)} at 9:00 AM. The paper stays locked until then.`);return}
+ const p=getProfile();if(!p.name)return profileSetup(true);
+ cfg.per=25;cfg.dur=180;setOrder('PCM');window._t=x.id;
+ modal(`<h3>${esc(x.id)} · GTM Full Mock</h3><p class="mut">Released ${esc(gtmFmtDate(x))} at 9:00 AM · Candidate: <b>${esc(p.name)}</b></p><div class="f"><label>Test Name<input id="testName" value="${esc(x.id)}" readonly></label><div class="mut">Question paper is preloaded. No upload is required.</div></div><p><button class="btn g" onclick="startScheduled('${x.id}')">Open ${esc(x.id)}</button> <button class="btn w" onclick="closeM()">Cancel</button></p>`);
+}
+function startScheduled(id){
+ const x=GTM_SCHEDULE.find(z=>z.id===id);if(!x||!gtmReleased(x))return;
+ const url=gtmPath(x,x.qp);
+ fetch(url,{method:'HEAD'}).then(r=>{if(!r.ok)throw new Error('missing');return r}).then(()=>{
+   closeM();
+   S={id:Date.now(),type:x.id,name:getProfile().name,photo:getProfile().photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:25,order:'PCM',scheduledId:x.id,scheduledPdf:url,endAt:Date.now()+180*60000,q:Array.from({length:75},()=>({a:'',s:0,t:0}))};
+   S.q[0].s=1;pdfName=x.qp;pdfUrl=url;begin();
+ }).catch(()=>alert(`The ${x.id} PDF is not present yet. Put “${x.qp}” inside the single GTM-PDFS folder and try again.`));
+}
+function renderGtmSchedule(){
+ const next=gtmNext(),ne=$('#gtmNext'),list=$('#gtmList');if(!ne||!list)return;
+ if(next){const p=gtmParts(gtmDate(next).getTime()-Date.now());ne.innerHTML=`<div class="gtm-next-card"><div class="gtm-kicker">NEXT TEST</div><h3>${next.id} <span class="mut">· ${gtmFmtDate(next)}</span></h3><div class="gtm-status">Paper unlocks automatically at <b>09:00 AM</b> and remains available permanently after release.</div><div class="gtm-count"><div class="gtm-unit"><b>${String(p.d).padStart(2,'0')}</b><span>DAYS</span></div><div class="gtm-unit"><b>${String(p.h).padStart(2,'0')}</b><span>HOURS</span></div><div class="gtm-unit"><b>${String(p.m).padStart(2,'0')}</b><span>MINUTES</span></div><div class="gtm-unit"><b>${String(p.s).padStart(2,'0')}</b><span>SECONDS</span></div></div><button class="gbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(x=>x.id==='${next.id}'))">🔒 View locked test</button></div><div class="gtm-list-card"><div class="gtm-kicker">RELEASE RULE</div><h3 style="margin:6px 0">9:00 AM unlock</h3><p class="mut" style="line-height:1.6">Before release, the PDF cannot be opened. At 09:00, the test becomes available and never locks again.</p></div>`}
+ else ne.innerHTML=`<div class="gtm-next-card" style="grid-column:1/-1"><div class="gtm-kicker">SERIES COMPLETE</div><h3>All 9 GTMs are released.</h3><p class="mut">Every scheduled paper remains available permanently.</p></div>`;
+ list.innerHTML=GTM_SCHEDULE.map(x=>{const r=gtmReleased(x);return `<article class="gtm-test ${r?'released':'locked'}"><span class="release-badge">${r?'RELEASED':'LOCKED'}</span><div class="gtm-num">${x.id}</div><div class="gtm-date">${gtmFmtDate(x)} · 09:00 AM</div>${r?`<div class="mini-count">Paper available permanently</div><button class="pbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(y=>y.id==='${x.id}'))">Open Test →</button><div class="gtm-files"><a href="${gtmPath(x,x.qp)}" target="_blank">QP</a><a href="${gtmPath(x,x.key)}" target="_blank">Final Key</a><a href="${gtmPath(x,x.sol)}" target="_blank">Key + Sols</a></div>`:`<div class="mini-count">Unlocks at 09:00 AM</div><button class="gbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(y=>y.id==='${x.id}'))">🔒 Locked</button>`}</article>`}).join('');
+}
+let gtmClock=setInterval(()=>{if(!$('#land').hidden)renderGtmSchedule()},1000);
+
 /* ---------- Landing / History ---------- */
 const TYPES=[
  {n:'Full Mock',d:'Phy + Chem + Maths · 75 Q · 3 hrs',per:25,dur:180},
@@ -389,6 +435,7 @@ function home(){
  const pb=$('#profileBanner'),profileChipEl=$('#profileChip');
  if(profileChipEl)profileChipEl.innerHTML=p.name?`<span class="profile-chip">${p.photo?`<img src="${p.photo}" alt="">`:''}${esc(p.name)}</span>`:'';
  if(pb)pb.innerHTML=p.name?`<div class="profile-mini">${p.photo?`<img src="${p.photo}" alt="">`:'<span class="avatar-fallback">N</span>'}<div><b>${esc(p.name)}</b><span>Candidate profile saved · reused automatically in every test</span></div><button class="gbtn" onclick="profileSetup()">Edit</button></div>`:`<div class="profile-mini"><span class="avatar-fallback">?</span><div><b>Set up your candidate profile</b><span>Your name is asked once and reused for every test.</span></div><button class="pbtn" onclick="profileSetup()">Set up</button></div>`;
+ renderGtmSchedule();
  const BD=['FULL','PHY','CHEM','MATH','⚙'],HU=[228,200,150,28,320];
  $('#types').innerHTML=TYPES.map((t,i)=>`<button class="tcard rv" style="--i:${i+2};--h:${HU[i]}" onclick="pick(TYPES[${i}])"><em class="bd">${BD[i]}</em><b>${t.n}</b><span>${t.d}</span><i class="go">Start →</i></button>`).join('');
  const ss=Store.get('nta_sess'),rb=$('#resumeBox');rb.hidden=!(ss&&!ss.done);

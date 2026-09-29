@@ -1,0 +1,34 @@
+GT M PDF DROP-IN FOLDER
+
+Put ALL GTM PDFs directly in THIS folder. Do NOT make GTM-01, GTM-02, etc. subfolders.
+
+Required filenames:
+GTM-01_QP.pdf
+GTM-01_Final Key.pdf
+GTM-01_Key & Sols.pdf
+GTM-02_QP.pdf
+GTM-02_Final Key.pdf
+GTM-02_Key & Sols.pdf
+GTM-03_QP.pdf
+GTM-03_Final Key.pdf
+GTM-03_Key & Sols.pdf
+GTM-04_QP.pdf
+GTM-04_Final Key.pdf
+GTM-04_Key & Sols.pdf
+GTM-05_QP.pdf
+GTM-05_Final Key.pdf
+GTM-05_Key & Sols.pdf
+GTM-06_QP.pdf
+GTM-06_Final Key.pdf
+GTM-06_Key & Sols.pdf
+GTM-07_QP.pdf
+GTM-07_Final Key.pdf
+GTM-07_Key & Sols.pdf
+GTM-08_QP.pdf
+GTM-08_Final Key.pdf
+GTM-08_Key & Sols.pdf
+GTM-09_QP.pdf
+GTM-09_Final Key.pdf
+GTM-09_Key & Sols.pdf
+
+That is it. Copy-paste the PDFs here and open index.html.
