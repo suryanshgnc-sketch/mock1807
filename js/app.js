@@ -58,7 +58,7 @@ const KEYIDB={
  async set(v){try{(await this.db()).transaction('f','readwrite').objectStore('f').put(v,'key')}catch(e){}},
  async get(){try{const d=await this.db();return await new Promise(r=>{const q=d.transaction('f').objectStore('f').get('key');q.onsuccess=()=>r(q.result);q.onerror=()=>r()})}catch(e){}}
 };
-let keyPdfUrl=null,keyPdfName='Answer Key PDF';
+let keyPdfUrl=null,keyPdfName='Answer Key PDF',keyPdfDoc=null,keyPdfRendering=false;
 async function restoreKeyPdf(){
  const r=await KEYIDB.get();
  if(r&&r.blob){keyPdfUrl=URL.createObjectURL(r.blob);keyPdfName=r.name;if(S&&S.mode==='B'&&!$('#res').hidden)drawRes();}
@@ -305,7 +305,7 @@ function drawRes(){
     </section>
     <section class="pdf-pane key-pane">
       <div class="pane-head"><div><b>Official Answer Key</b><small>${keyPdfUrl?esc(keyPdfName):'Upload PDF'}</small></div><label>Page <input id="keyPage" type="number" min="1" value="1" onchange="keyResultPage()"></label></div>
-      ${keyPdfUrl?`<embed id="keyResultPdf" class="key-frame" type="application/pdf" src="${keyPdfUrl}#page=1&zoom=page-width">`:`<div class="pdf-empty upload-empty"><b>Answer key goes here</b><br>Use <strong>Upload Answer-Key PDF</strong> above.</div>`}
+      ${keyPdfUrl?`<div class="key-canvas-wrap"><canvas id="keyCanvas"></canvas><div id="keyLoading" class="key-loading">Rendering answer key…</div></div>`:`<div class="pdf-empty upload-empty"><b>Answer key goes here</b><br>Use <strong>Upload Answer-Key PDF</strong> above.</div>`}
     </section>
   </div>
   `:`<div class="auto-eval-panel">
@@ -379,12 +379,36 @@ async function loadPdfJs(){
  const w=await (await fetch(B+'pdf.worker.min.js')).text();
  pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
 }
+async function renderKeyPage(pageNo){
+ if(!keyPdfDoc || keyPdfRendering) return;
+ keyPdfRendering=true;
+ const wrap=$('.key-canvas-wrap'),canvas=$('#keyCanvas'),loading=$('#keyLoading');
+ try{
+   const n=Math.min(Math.max(1,pageNo),keyPdfDoc.numPages);
+   const page=await keyPdfDoc.getPage(n);
+   const base=page.getViewport({scale:1});
+   const maxW=Math.max(320,(wrap?.clientWidth||760)-24);
+   const scale=Math.max(1.15,Math.min(2.2,maxW/base.width));
+   const vp=page.getViewport({scale});
+   canvas.width=Math.ceil(vp.width); canvas.height=Math.ceil(vp.height);
+   canvas.style.width='100%'; canvas.style.height='auto';
+   const ctx=canvas.getContext('2d',{alpha:false});
+   ctx.save(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.restore();
+   if(loading) loading.style.display='block';
+   await page.render({canvasContext:ctx,viewport:vp,background:'#ffffff'}).promise;
+   if(loading) loading.style.display='none';
+   const inp=$('#keyPage'); if(inp) inp.value=n;
+ }catch(e){
+   if(loading){loading.style.display='block';loading.textContent='Could not render this page. Use the uploaded PDF again.';}
+ }finally{keyPdfRendering=false;}
+}
+
 async function keyPdf(f){
  if(!f)return;
  try{
   if(keyPdfUrl)URL.revokeObjectURL(keyPdfUrl);keyPdfUrl=URL.createObjectURL(f);keyPdfName=f.name;KEYIDB.set({blob:f,name:f.name});
   await loadPdfJs();
-  const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
+  const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; keyPdfDoc=d; let t='';
   for(let p=1;p<=d.numPages;p++){
    t+=(await (await d.getPage(p)).getTextContent()).items.map(x=>x.str).join(' ')+' ';
   }
