@@ -5,29 +5,31 @@
 <meta name="author" content="suryansh1807"><meta name="copyright" content="MDCCCVII"><meta name="theme-color" content="#0b1220">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/theme.css">
-<link rel="stylesheet" href="css/professional.css">
+<link rel="stylesheet" href="css/mdcccvii.css">
 </head><body>
 <div id="land">
- <nav class="hn"><div class="logo"><svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg><b>MDCCCVII</b><span class="tag">TESTS</span></div>
+ <nav class="hn"><div class="logo"><svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg><b>MDCCCVII</b></div>
   <div class="nav-links"><a href="#tests">Tests</a><a href="#leaderboard">Leaderboard</a><a href="#progress">Progress</a></div>
   <div class="home-actions"><span id="profileChip"></span><button class="gbtn" onclick="profileSetup()">Profile</button><button class="gbtn" onclick="settings()">Settings</button></div></nav>
  <main class="hm">
-  <section class="hero"><span class="pill"><i class="dot"></i> Test series · Live rankings</span><h1>Compete under <em>real exam conditions</em>.</h1>
-   <p>Full-length mock tests in an exam-accurate interface, followed by a detailed breakdown of your score, accuracy and time management.</p>
-   <div class="hero-points"><span>Exam-style interface</span><span>Scheduled test series</span><span>Verified results &amp; live leaderboard</span></div>
-   <div id="profileBanner" class="profile-banner gl"></div></section>
+  <section class="hero"><div class="hero-copy"><h1>Sit the paper. Get marked. See where you rank.</h1>
+   <p>MDCCCVII runs scheduled full-length JEE mock tests in an exam-grade interface. Answer keys stay locked on our servers, and every attempt is scored the moment the key is published.</p>
+   <div class="hero-cta"><a class="cta" href="#backendTestsSection">See upcoming tests</a><a class="cta ghost" href="#leaderboard">Leaderboard</a></div>
+   <div id="profileBanner" class="profile-banner gl"></div></div>
+   <div class="omr" aria-hidden="true"><div class="omr-h"><span>Answer sheet</span><span>Roll no. ______</span></div><div class="omr-l"><i>A</i><i>B</i><i>C</i><i>D</i></div><div class="rw"><b>1</b><s>A</s><s class="k" style="--d:0.5s">B</s><s>C</s><s>D</s></div><div class="rw"><b>2</b><s>A</s><s>B</s><s>C</s><s class="k" style="--d:0.8s">D</s></div><div class="rw"><b>3</b><s class="k" style="--d:1.1s">A</s><s>B</s><s>C</s><s>D</s></div><div class="rw"><b>4</b><s>A</s><s>B</s><s class="k" style="--d:1.5s">C</s><s>D</s></div><div class="rw"><b>5</b><s>A</s><s class="k" style="--d:1.8s">B</s><s>C</s><s>D</s></div><div class="rw"><b>6</b><s>A</s><s class="k" style="--d:2.1s">B</s><s>C</s><s>D</s></div><div class="rw"><b>7</b><s>A</s><s>B</s><s>C</s><s class="k" style="--d:2.4s">D</s></div><div class="rw"><b>8</b><s class="k" style="--d:2.7s">A</s><s>B</s><s>C</s><s>D</s></div>
+    <div class="stamp"><small>Result declared</small><b id="stampN">142</b><span>out of 300 &middot; rank 12</span></div></div></section>
   <div id="resumeBox" class="gl" hidden></div>
   <section class="sec reveal" id="backendTestsSection"><a id="tests"></a>
    <div class="sec-head"><div><div class="kicker">Test series</div><h2>Upcoming Tests</h2><p class="mut">Tests unlock automatically at their scheduled time.</p></div><button class="gbtn" id="refreshBackendTests">Refresh</button></div>
    <div id="backendTests" class="bt-grid"><div class="bt-empty">Loading tests…</div></div>
   </section>
   <section class="sec reveal" id="about"><div class="sec-head"><div><div class="kicker">The platform</div><h2>Built for serious preparation</h2></div></div>
-   <div class="feat"><div class="fc"><b>01</b><h3>Exam-grade interface</h3><p>A distraction-free computer-based test with question palette, timer, section navigation and numerical keypad.</p></div>
-   <div class="fc"><b>02</b><h3>Scheduled releases</h3><p>Every test unlocks at a fixed time for all students, so everyone competes on equal terms.</p></div>
-   <div class="fc"><b>03</b><h3>Verified evaluation</h3><p>Answer keys are held securely on the server. Once published, every attempt is scored automatically and ranked.</p></div></div></section>
+   <div class="feat"><div class="fc"><b></b><h3>Exam-grade interface</h3><p>A distraction-free computer-based test with question palette, timer, section navigation and numerical keypad.</p></div>
+   <div class="fc"><b></b><h3>Scheduled releases</h3><p>Every test unlocks at a fixed time for all students, so everyone competes on equal terms.</p></div>
+   <div class="fc"><b></b><h3>Verified evaluation</h3><p>Answer keys are held securely on the server. Once published, every attempt is scored automatically and ranked.</p></div></div></section>
   <section class="sec reveal" id="results"><div class="sec-head"><div><div class="kicker">Scorecards</div><h2>Your declared results</h2></div></div><div class="bt-grid" id="resBody"></div></section>
   <section class="sec reveal" id="leaderboard"><div class="sec-head"><div><div class="kicker">Rankings</div><h2>Leaderboard</h2><p class="mut">Ranked by score, with faster completion breaking ties. Your best attempt per test counts.</p></div><div class="lb-ctl"><select id="lbSel"><option>Overall</option></select><button class="gbtn" id="lbRefresh">Refresh</button></div></div><div id="lbBody"></div></section>
   <section class="sec reveal" id="progress"><div class="sec-head"><div><div class="kicker">Overview</div><h2>Your progress</h2></div></div><div class="stats" id="stats"></div><div class="anl" id="anl"></div></section>

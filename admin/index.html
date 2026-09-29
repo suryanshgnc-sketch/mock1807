@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>mock1807 · Admin Control Center</title>
+  <title>MDCCCVII · Control Center</title>
   <meta name="theme-color" content="#080a0d">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="admin.css?v=4">
+  <link rel="stylesheet" href="pro.css">
 </head>
 <body>
   <div id="loading" class="center"><div class="loader"></div><p>Checking admin access…</p></div>
 
   <section id="login" class="center hidden">
     <div class="login-card">
-      <div class="mark">1807</div>
-      <div class="eyebrow">MOCK1807 · CONTROL CENTER</div>
+      <div class="mark">MDCCCVII</div>
+      <div class="eyebrow">MDCCCVII · CONTROL CENTER</div>
       <h1>Admin Dashboard</h1>
       <p>Sign in with your authorized Google account to manage tests, PDFs and student data.</p>
       <button id="googleBtn" class="primary">Continue with Google</button>
@@ -24,7 +26,7 @@
 
   <div id="app" class="hidden">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-dot">18</span><div><b>mock1807</b><small>ADMIN</small></div></div>
+      <div class="brand"><span class="brand-dot">M</span><div><b>MDCCCVII</b><small>CONTROL CENTER</small></div></div>
       <nav>
         <button class="nav active" data-view="overview">Overview</button>
         <button class="nav" data-view="tests">Tests</button>
@@ -75,5 +77,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="admin.js?v=4"></script>
   <script src="keys.js"></script>
+  <script src="motion.js"></script>
 </body>
 </html>
