@@ -18,13 +18,18 @@ function profileSetup(force=false){
  const name=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'Candidate';
  const email=u?.email||''; const photo=m.avatar_url||m.picture||p.photo||'';
  const initials=String(name).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M';
- modal(`<div class="account-shell">
-   <div class="account-top">
-     ${photo?`<img class="account-avatar" src="${esc(photo)}" alt="Google profile photo">`:`<div class="account-avatar account-avatar-fallback">${esc(initials)}</div>`}
-     <div><div class="account-name">${esc(name)}</div><div class="account-email">${esc(email||'Google account')}</div><span class="account-badge">Google account</span></div>
+ modal(`<div class="account-shell account-modern">
+   <div class="account-cover"><span>MDCCCVII / ACCOUNT</span><button class="account-close" onclick="closeM()" aria-label="Close">×</button></div>
+   <div class="account-top account-profile-head">
+     ${photo?`<img class="account-avatar" src="${esc(photo)}" alt="Profile photo">`:`<div class="account-avatar account-avatar-fallback">${esc(initials)}</div>`}
+     <div class="account-ident"><div class="account-name">${esc(name)}</div><div class="account-email">${esc(email||'Signed-in account')}</div><span class="account-badge">${u?'Google account':'Local profile'}</span></div>
    </div>
-   <div class="account-section"><h4>Your account</h4><p>Your name, email and profile photo are taken from the Google account used to sign in. They stay consistent across this device and your test profile.</p><div class="account-actions"><button class="btn g" onclick="closeM();settings()">Open Settings</button><button class="btn w" onclick="closeM()">Done</button></div></div>
-   <div class="account-section"><h4>Candidate identity</h4><p>This is the identity shown beside your results and leaderboard entries.</p><div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:#0d120e"><div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#9cff57;display:grid;place-items:center;color:#071006;font-weight:800">${photo?`<img src="${esc(photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:esc(initials)}</div><div><b style="color:#eef4ee;font-size:13px">${esc(name)}</b><small style="display:block;color:#68736a;margin-top:2px">Synced from Google</small></div></div></div>
+   <div class="account-rows">
+    <div class="account-row"><span class="row-icon">@</span><div><b>Email</b><small>${esc(email||'Not available')}</small></div></div>
+    <div class="account-row"><span class="row-icon">✓</span><div><b>Candidate identity</b><small>This name is used on your test results and leaderboard.</small></div></div>
+    <div class="account-row"><span class="row-icon">↗</span><div><b>Profile source</b><small>${u?'Synced from your signed-in Google account':'Stored locally on this device'}</small></div></div>
+   </div>
+   <div class="account-actions account-bottom"><button class="btn w" onclick="closeM();settings()">Settings</button><button class="btn g" onclick="closeM()">Done</button></div>
  </div>`);
 }
 function previewProfilePhoto(f){
@@ -53,16 +58,32 @@ addEventListener('keydown',e=>{if(!S||S.done)return;if(['INPUT','TEXTAREA'].incl
 function modal(h){$('#dbox').innerHTML=h;$('#dlg').className='modal'+(S?'':' dk');$('#dlg').hidden=false}
 function closeM(){$('#dlg').hidden=true}
 function settings(){
- modal(`<div class="settings-head"><div class="kicker">CONTROL CENTER · PREFERENCES</div><h2>Settings</h2><p>Configure your test workspace and keep your local data portable.</p></div>
- <div class="settings-body"><div class="settings-grid">
-  <div class="settings-card"><label>Correct answer score<input id="s1" type="number" min="0" step="0.5" value="${cfg.pos}"></div>
-  <div class="settings-card"><label>Negative marking · MCQ<input id="s2" type="number" min="0" step="0.5" value="${cfg.negA}"></div>
-  <div class="settings-card"><label>Negative marking · Numerical<input id="s3" type="number" min="0" step="0.5" value="${cfg.negB}"></div>
-  <div class="settings-card"><label>Duration · minutes<input id="s4" type="number" min="1" value="${cfg.dur}"></div>
-  <div class="settings-card"><label>Questions per subject<input id="s5" type="number" min="6" value="${cfg.per}"></div>
-  <div class="settings-card"><label>Subject order<select id="s6">${['PCM','MPC','PMC','CPM','CMP','MCP','P','C','M'].map(o=>`<option ${o===cfg.order?'selected':''}>${o}</option>`).join('')}</select></div>
- </div>
- <div class="settings-divider"></div><div class="settings-actions"><div class="left"><button class="btn w" onclick="exportJ()">Export data</button><label class="btn w">Import data<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label></div><div class="right"><button class="btn w" onclick="closeM()">Cancel</button><button class="btn g" onclick="saveCfg()">Save settings</button></div></div>
+ const theme=Store.get('md_theme','dark');
+ modal(`<div class="settings-modern">
+  <div class="settings-head"><div class="kicker">MDCCCVII / CONTROL CENTER</div><div class="settings-title-row"><div><h2>Settings</h2><p>Fine-tune your test workspace without touching your saved attempts.</p></div><button class="account-close" onclick="closeM()" aria-label="Close">×</button></div></div>
+  <div class="settings-body">
+   <div class="settings-section"><div class="settings-section-title"><span>01</span><div><b>Test experience</b><small>Scoring and exam defaults used by the local test engine.</small></div></div>
+    <div class="settings-grid settings-grid-compact">
+     <div class="settings-card"><label>Correct answer<input id="s1" type="number" min="0" step="0.5" value="${cfg.pos}"><small>Marks awarded</small></div>
+     <div class="settings-card"><label>MCQ negative marking<input id="s2" type="number" min="0" step="0.5" value="${cfg.negA}"><small>Marks deducted</small></div>
+     <div class="settings-card"><label>Numerical negative marking<input id="s3" type="number" min="0" step="0.5" value="${cfg.negB}"><small>Marks deducted</small></div>
+     <div class="settings-card"><label>Duration · minutes<input id="s4" type="number" min="1" value="${cfg.dur}"><small>Default local duration</small></div>
+     <div class="settings-card"><label>Questions / subject<input id="s5" type="number" min="6" value="${cfg.per}"><small>Used for custom/local tests</small></div>
+     <div class="settings-card"><label>Subject order<select id="s6">${['PCM','MPC','PMC','CPM','CMP','MCP','P','C','M'].map(o=>`<option ${o===cfg.order?'selected':''}>${o}</option>`).join('')}</select><small>Physics · Chemistry · Mathematics</small></div>
+    </div>
+   </div>
+   <div class="settings-section"><div class="settings-section-title"><span>02</span><div><b>Interface</b><small>Display preferences for the MDCCCVII workspace.</small></div></div>
+    <div class="settings-preferences">
+      <div class="pref-row"><div><b>Dark exam interface</b><small>Keep the high-contrast MDCCCVII black / neon theme.</small></div><span class="toggle on"><i></i></span></div>
+      <div class="pref-row"><div><b>Motion effects</b><small>Use subtle transitions and dashboard animations.</small></div><span class="toggle on"><i></i></span></div>
+      <div class="pref-row"><div><b>Autosave</b><small>Your local session is periodically saved automatically.</small></div><span class="toggle on"><i></i></span></div>
+    </div>
+   </div>
+   <div class="settings-section"><div class="settings-section-title"><span>03</span><div><b>Data & account</b><small>Move your local data between browsers or devices.</small></div></div>
+    <div class="settings-data"><button class="btn w" onclick="exportJ()">Export data</button><label class="btn w">Import data<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label><button class="btn w" onclick="profileSetup();">View profile</button></div>
+   </div>
+  </div>
+  <div class="settings-footer"><span>Changes to scoring defaults do not modify submitted backend results.</span><div><button class="btn w" onclick="closeM()">Cancel</button><button class="btn g" onclick="saveCfg()">Save changes</button></div></div>
  </div>`);
 }
 function saveCfg(){
