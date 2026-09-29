@@ -64,10 +64,3 @@ Everything lives in `localStorage` and `IndexedDB` on your device. Nothing is up
 ## License
 
 MIT
-
-
-## Manual answer-key checking
-After submitting a test, switch to **Manual Checking**. Upload the official answer-key PDF once.
-The verification workspace shows the question paper, question-by-question marking cards, and answer-key PDF together.
-Use the question navigator to jump directly to a question, then mark **Correct** or **Wrong**.
-Manual decisions are persisted with the test history.

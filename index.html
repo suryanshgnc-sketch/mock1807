@@ -10,10 +10,10 @@
 <div id="land">
  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
  <nav class="hn"><div class="logo"><svg width="34" height="34" viewBox="0 0 56 56"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg><b>JEE MOCK CBT</b></div>
-  <button class="gbtn" onclick="settings()">⚙ Settings</button></nav>
+  <div class="home-actions"><span id="profileChip"></span><button class="gbtn" onclick="profileSetup()">Profile</button><button class="gbtn" onclick="settings()">⚙ Test Settings</button></div></nav>
  <main class="hm">
   <section class="hero rv" style="--i:0"><span class="pill">NTA-style CBT simulator</span><h1>Train like it's <em>exam day</em>.</h1>
-   <p>Upload any paper, attempt it in a real CBT interface, and see exactly where your marks go.</p></section>
+   <p>Upload any paper, attempt it in a clean NTA-style CBT interface, and review your performance after submission.</p><div id="profileBanner" class="profile-banner gl"></div></section>
   <div id="resumeBox" class="gl" hidden></div>
   <div class="stats" id="stats"></div>
   <h2>Start a test</h2><div class="types" id="types"></div>
@@ -26,8 +26,8 @@
 <div id="app" hidden>
  <header><div class="logo"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg>
   <div><b>NATIONAL TESTING AGENCY</b><i>Excellence in Assessment</i></div></div>
-  <div class="cand"><div class="av"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span></div></div></header>
- <div id="obar"><b>JEE MAIN</b><div id="tabs"></div><button class="btn w" style="margin-left:auto" onclick="settings()">⚙ Settings</button></div>
+  <div class="cand"><div class="av"><img id="candidatePhoto" alt="Candidate"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span></div></div></header>
+ <div id="obar"><b>JEE MAIN</b><div id="tabs"></div></div>
  <main>
   <section id="left">
    <div id="bar"><label class="btn">Upload Your Paper (PDF)<input type="file" accept="application/pdf" hidden onchange="loadPdf(this.files[0])"></label>
