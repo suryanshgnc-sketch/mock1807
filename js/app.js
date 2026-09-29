@@ -66,7 +66,7 @@ function start(){
  if(!name||!roll)return alert('Please enter Student Name and Roll No.');
  if($('#lf').files[0])loadPdf($('#lf').files[0]);
  Store.set('nta_who',{n:name,r:roll});closeM();
- S={id:Date.now(),type:window._t||'Test',name,roll,cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),
+ S={id:Date.now(),type:window._t||'Test',name,roll,cur:0,done:false,mode:'A',key:Array(N()).fill(''),man:Array(N()).fill(false),date:new Date().toLocaleString(),
   per:cfg.per,order:cfg.order,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:N()},()=>({a:'',s:0,t:0}))};
  S.q[0].s=1;begin();
 }
@@ -176,61 +176,121 @@ function showRes(){
  $('#land').hidden=true;$('#app').hidden=true;$('#res').hidden=false;drawRes();
 }
 function drawRes(){
- const per=cfg.per;let g='';
- for(let i=0;i<N();i++){
-  const pre=i%per===0?`<div style="grid-column:1/-1;font-weight:bold;color:#337ab7">${SUB[sub(i)]}</div>`:'';
-  g+=pre+(S.mode==='B'?`<label>${i+1} <input type="checkbox" ${S.man[i]?'checked':''} onchange="S.man[${i}]=this.checked" ${S.q[i].a===''?'disabled':''}> ✓</label>`
-   :`<label>${i+1}<input type="text" value="${esc(S.key[i]||'')}" oninput="S.key[${i}]=this.value"></label>`);
+ const per=cfg.per, n=N(), parts=[];
+ const answerCell=(i)=>{
+   if(S.mode==='B') return `<label class="key-man"><input type="checkbox" ${S.man[i]?'checked':''} ${S.q[i].a===''?'disabled':''} onchange="S.man[${i}]=this.checked;saveSess()"> Correct</label>`;
+   if(isNum(i)) return `<input class="key-num" inputmode="decimal" value="${esc(S.key[i]||'')}" placeholder="Numerical" oninput="setKey(${i},this.value)">`;
+   return `<div class="key-opts">${['A','B','C','D'].map(x=>`<button type="button" class="${String(S.key[i]||'').toUpperCase()===x?'sel':''}" onclick="setKey(${i},'${x}')">${x}</button>`).join('')}</div>`;
+ };
+ for(let s=0;s<SUB.length;s++){
+   const start=s*per,end=Math.min(start+per,n);
+   parts.push(`<section class="key-subject"><div class="key-sub-head"><b>${SUB[s]}</b><span>Q1–Q${end-start} · ${end-start-5} MCQ + 5 Numerical</span><button class="btn w" onclick="clearSubjectKey(${s})">Clear subject</button></div>
+   <div class="key-table"><div class="key-row key-h"><span>Q</span><span>Your response</span><span>Correct answer</span><span>Status</span></div>`);
+   for(let i=start;i<end;i++){
+     const e=evaluate()[i], status=S.mode==='B'?(S.man[i]?'Correct':'—'):((S.key[i]||'')?(e.r==='Correct'?'Correct':e.r==='Incorrect'?'Wrong':'—'):'—');
+     parts.push(`<div class="key-row"><span><b>${i-start+1}</b></span><span>${esc(S.q[i].a||'—')}</span><span>${answerCell(i)}</span><span class="key-status ${status==='Correct'?'ok':status==='Wrong'?'bad':''}">${status}</span></div>`);
+   }
+   parts.push(`</div></section>`);
  }
- $('#res').innerHTML=`<div class="card"><h2 style="margin-top:0">Results &amp; Evaluation – ${esc(S.name)}</h2>
- <p><b>Evaluation mode:</b> <select onchange="S.mode=this.value;drawRes()"><option value="A" ${S.mode==='A'?'selected':''}>A – Auto-match with answer key</option>
- <option value="B" ${S.mode==='B'?'selected':''}>B – Manual self-check</option></select></p>
- ${S.mode==='A'?`<textarea id="paste" rows="3" style="width:100%" placeholder="Paste key text (Q-number/answer pairs, or a plain list 1,4,2,3...)"></textarea>
- <button class="btn w" onclick="pasteKey()">Apply Pasted Key</button> <label class="btn o">Import Key from PDF<input type="file" accept="application/pdf" hidden onchange="keyPdf(this.files[0])"></label>`:'<p>Tick every attempted question you got correct.</p>'}
- <div class="kg" style="margin:10px 0">${g}</div>
- <button class="btn g" onclick="dash()">Evaluate</button> <button class="btn" onclick="dash();print()">Download Response Sheet (PDF)</button>
- <button class="btn w" onclick="location.reload()">Home</button></div><div id="dash"></div>`;
- if(S.key.length||S.mode==='B')dash();
+ $('#res').innerHTML=`<div class="card key-card">
+   <div class="key-title"><div><h2>Results &amp; Answer Key</h2><p class="mut">Enter the official key once, evaluate, then download a NTA-style response sheet.</p></div>
+   <div class="key-actions"><button class="btn g" onclick="dash()">Evaluate</button><button class="btn" onclick="downloadResponsePDF()">Download Response Sheet PDF</button><button class="btn w" onclick="location.reload()">Home</button></div></div>
+   <div class="key-mode"><label><b>Evaluation:</b> <select onchange="S.mode=this.value;drawRes()"><option value="A" ${S.mode==='A'?'selected':''}>Automatic — answer key</option><option value="B" ${S.mode==='B'?'selected':''}>Manual — tick correct answers</option></select></label>
+   ${S.mode==='A'?`<div class="key-import"><textarea id="paste" rows="5" placeholder="Easy options:
+• 1 A, 2 C, 3 B ... 
+• Q1 A / Q2 C / Q3 B ...
+• Paste the whole NTA answer-key PDF text
+• You can paste Physics, Chemistry and Mathematics blocks separately"></textarea>
+   <div class="key-import-actions"><button class="btn" onclick="pasteKey()">Apply / Auto-fill Key</button><button class="btn w" onclick="fillKeyTemplate()">Copy blank key template</button><label class="btn w">Import key PDF<input type="file" accept="application/pdf" hidden onchange="keyPdf(this.files[0])"></label></div>
+   <small class="mut">Tip: if the official PDF repeats Q1–Q25 under each subject, the importer keeps those subject sections separate.</small></div>`:`<p class="mut">Tick <b>Correct</b> for each attempted question. This is useful when checking from an official solution manually.</p>`}
+   <div class="key-progress" id="keyProgress"></div>
+   ${parts.join('')}
+ </div><div id="dash"></div>`;
+ updateKeyProgress();
+ if(S.key.some(Boolean)||S.mode==='B')dash();
+}
+function setKey(i,v){S.key[i]=String(v||'').trim().toUpperCase();saveSess();updateKeyProgress();if($('#dash')?.innerHTML)dash();}
+function clearSubjectKey(s){for(let i=s*cfg.per;i<Math.min((s+1)*cfg.per,N());i++)S.key[i]='';saveSess();drawRes();}
+function updateKeyProgress(){
+ const filled=S.mode==='B'?S.man.filter(Boolean).length:S.key.filter(Boolean).length;
+ const total=N();
+ const el=$('#keyProgress');if(el)el.innerHTML=`<b>${filled}/${total}</b> answers entered <span class="key-bar"><i style="width:${total?filled/total*100:0}%"></i></span>`;
+}
+function fillKeyTemplate(){
+ const out=SUB.map(s=>`${s}: `+Array(cfg.per).fill('A').map((_,i)=>`Q${i+1} __`).join(' ')).join('\n');
+ navigator.clipboard?.writeText(out).then(()=>alert('Blank template copied. Paste it into the answer-key box and replace __ with the answers.')).catch(()=>alert(out));
 }
 function pasteKey(){applyKey($('#paste').value)}
-function dash(){
- saveSess();saveHist();if(Store.get('nta_tok',''))cloud('push',true);
- const sm=summary(),max=N()*cfg.pos;
- const errs=sm.E.map((e,i)=>({e,i})).filter(x=>x.e.r==='Incorrect');
- $('#dash').innerHTML=`<div class="card"><h3 style="margin-top:0">Score: ${sm.score} / ${max} &nbsp; Accuracy: ${sm.acc}%</h3>
- <table><tr><th>Subject</th><th>Correct (+${cfg.pos})</th><th>Incorrect</th><th>Unattempted</th><th>Net Marks</th><th>Time</th><th>Accuracy</th></tr>
- ${sm.subs.map(x=>`<tr><td>${x.n}</td><td>${x.c}</td><td>${x.w}</td><td>${x.u}</td><td>${x.m}</td><td>${mm(x.t)}</td><td>${x.acc}%</td></tr>`).join('')}</table></div>
- <div class="card"><h3 style="margin-top:0">Error Analysis (negative marks)</h3>${errs.length?`<table><tr><th>Q</th><th>Subject</th><th>Your Answer</th><th>Correct Answer</th><th>Marks</th></tr>
- ${errs.map(({e,i})=>`<tr><td>${i+1}</td><td>${SUB[sub(i)]}</td><td>${esc(S.q[i].a)}</td><td>${S.mode==='B'?'—':esc(e.c)}</td><td>${e.m}</td></tr>`).join('')}</table>`:'None.'}</div>`;
- $('#report').innerHTML=`<h2>JEE (Main) Mock Examination – ${esc(S.type||'')} Response Sheet</h2>
- <p><b>Student:</b> ${esc(S.name)} &nbsp; <b>Roll:</b> ${esc(S.roll)} &nbsp; <b>Date:</b> ${esc(S.date)} &nbsp; <b>Paper:</b> ${esc(pdfName)}</p>
- <p><b>Final Score: ${sm.score} / ${max}</b> &nbsp; Accuracy: ${sm.acc}%</p>
- <table><tr><th>Q.No</th><th>Subject</th><th>Chosen</th><th>Correct</th><th>Time</th><th>Status</th><th>Marks</th></tr>
- ${sm.E.map((e,i)=>`<tr><td>${i+1}</td><td>${SUB[sub(i)]}</td><td>${esc(S.q[i].a)||'—'}</td><td>${S.mode==='B'?'—':esc(e.c)||'—'}</td><td>${mm(S.q[i].t)}</td><td>${e.r}</td><td>${e.m}</td></tr>`).join('')}</table>`;
- $('#report').insertAdjacentHTML('beforeend','<p style="font-size:11px;color:#888">Generated with JEE Mock CBT · suryansh1807</p>');
-}
 
 /* ---------- Answer-key PDF import ---------- */
-function parseKey(t){
- const tk=t.split(/[\s,;|:]+/).filter(Boolean),n=N();
- if(tk.length<=n+2)return{k:tk.slice(0,n),n:tk.length};
- let best=[],bc=0;
- for(let s0=0;s0<tk.length;s0++){
-  if(tk[s0]!=='1')continue;
-  const k=[];let q=1,p=s0;
-  while(q<=n&&p<tk.length){if(tk[p]===String(q)&&p+1<tk.length){k[q-1]=tk[p+1];p+=2;q++}else p++}
-  if(q-1>bc){bc=q-1;best=k}if(bc>=n)break;
+function cleanAnswer(v){
+ v=String(v||'').trim().toUpperCase().replace(/[()[\]{}]/g,'');
+ if(/^[ABCD]$/.test(v))return v;
+ if(/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(v))return v;
+ return '';
+}
+function parsePairs(text){
+ const out=[];
+ const re=/(?:Q\s*)?(\d{1,3})\s*[\.\)\-:=]?\s*([ABCD]|[+-]?(?:\d+(?:\.\d*)?|\.\d+))/gi;
+ let m;while((m=re.exec(text)))out.push({q:+m[1],a:cleanAnswer(m[2])});
+ return out.filter(x=>x.a);
+}
+function parseAnswerSequence(text,count){
+ const tokens=String(text).toUpperCase().replace(/[,\u00b7;|]+/g,' ').split(/\s+/).map(x=>x.trim()).filter(Boolean);
+ const ans=tokens.map(cleanAnswer).filter(Boolean);
+ return ans.slice(0,count);
+}
+function subjectIndexFromName(name){
+ const u=name.toUpperCase();
+ if(/\bPHYSICS\b|\bPHY\b/.test(u))return SUB.indexOf('Physics');
+ if(/\bCHEMISTRY\b|\bCHEM\b/.test(u))return SUB.indexOf('Chemistry');
+ if(/\bMATHEMATICS\b|\bMATHS?\b/.test(u))return SUB.indexOf('Mathematics');
+ return -1;
+}
+function parseKey(text){
+ const raw=String(text||'').replace(/\r/g,'');
+ const result=Array(N()).fill('');
+ let used=0;
+
+ // First handle explicit subject blocks. JEE keys commonly repeat Q1–Q25 inside each subject.
+ const heading=/\b(PHYSICS|PHY|CHEMISTRY|CHEM|MATHEMATICS|MATHS?)\b/gi;
+ const hs=[...raw.matchAll(heading)];
+ if(hs.length){
+   for(let h=0;h<hs.length;h++){
+     const s=subjectIndexFromName(hs[h][1]);
+     if(s<0)continue;
+     const block=raw.slice(hs[h].index, h+1<hs.length?hs[h+1].index:raw.length);
+     const pairs=parsePairs(block);
+     if(pairs.length>=Math.min(3,cfg.per)){
+       for(const p of pairs)if(p.q>=1&&p.q<=cfg.per)result[s*cfg.per+p.q-1]=p.a;
+       used+=pairs.filter(p=>p.q>=1&&p.q<=cfg.per).length;
+     }else{
+       const seq=parseAnswerSequence(block,cfg.per);
+       seq.forEach((v,i)=>result[s*cfg.per+i]=v); used+=seq.length;
+     }
+   }
+   if(used)return{k:result,n:result.filter(Boolean).length,format:'subjects'};
  }
- return{k:best,n:bc};
+
+ // Explicit Q-number pairs. This also handles "1 A 2 B..." and Q1:A forms.
+ const pairs=parsePairs(raw);
+ if(pairs.length>=Math.min(3,N())){
+   for(const p of pairs)if(p.q>=1&&p.q<=N())result[p.q-1]=p.a;
+   used=result.filter(Boolean).length;
+   if(used)return{k:result,n:used,format:'pairs'};
+ }
+
+ // Plain list: A B C D ... or numerical values.
+ const seq=parseAnswerSequence(raw,N());
+ seq.forEach((v,i)=>result[i]=v);
+ return{k:result,n:seq.length,format:'sequence'};
 }
 function applyKey(t){
- const r=parseKey(t);if(!r.n)return alert('No answer key found in that text.');
+ const r=parseKey(t);
+ if(!r.n)return alert('No usable answers were found. Try Q1 A, Q2 B… or a plain answer list.');
  S.key=Array.from({length:N()},(_,i)=>r.k[i]||'');
- const u=t.toUpperCase(),W={P:'PHYSICS',C:'CHEMISTRY',M:'MATHEMATICS'};
- const ix=['P','C','M'].map(c=>[c,u.indexOf(W[c])]).filter(x=>x[1]>=0).sort((a,b)=>a[1]-b[1]);
- if(ix.length===3&&SUB.length===3){setOrder(ix.map(x=>x[0]).join(''));S.order=cfg.order;Store.set('nta_cfg',cfg)}
- drawRes();dash();
- if(r.n<N())alert('Read '+r.n+' of '+N()+' answers – check the grid and fill any gaps.');
+ saveSess();drawRes();
+ if(r.n<N())alert(`Imported ${r.n}/${N()} answers. The remaining cells are intentionally blank so you can fill them manually.`);
 }
 async function loadPdfJs(){
  if(window.pdfjsLib)return;
@@ -244,12 +304,76 @@ async function keyPdf(f){
  try{
   await loadPdfJs();
   const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
-  for(let p=1;p<=Math.min(d.numPages,3);p++){
+  for(let p=1;p<=d.numPages;p++){
    t+=(await (await d.getPage(p)).getTextContent()).items.map(x=>x.str).join(' ')+' ';
    if(parseKey(t).n>=N())break;
   }
   applyKey(t);
- }catch(e){alert('Could not read the PDF (pdf.js needs internet once). Copy the key text from the PDF and paste it instead.')}
+ }catch(e){alert('Could not read this PDF automatically. You can still paste its text into the answer-key box.')}
+}
+
+/* ---------- Real PDF response-sheet export ---------- */
+async function loadJsPDF(){
+ if(window.jspdf?.jsPDF)return window.jspdf.jsPDF;
+ const src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+ await new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+ if(!window.jspdf?.jsPDF)throw Error('PDF library unavailable');
+ return window.jspdf.jsPDF;
+}
+function pdfBubble(doc,x,y,label,filled){
+ doc.circle(x,y,3.2,'S');if(filled){doc.setFontSize(7);doc.text(String(label),x,y+1.8,{align:'center'});}
+}
+async function downloadResponsePDF(){
+ try{
+   const jsPDF=await loadJsPDF(),doc=new jsPDF({unit:'mm',format:'a4'});
+   const sm=summary(),E=sm.E,W=210,H=297,margin=12;
+   const title=`JEE (Main) Mock Examination – ${S.type||'Mock Test'}`;
+   const now=new Date().toLocaleString();
+   const header=()=>{
+     doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('JEE (MAIN) – CANDIDATE RESPONSE SHEET',W/2,13,{align:'center'});
+     doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Unofficial practice response sheet · generated by JEE Mock CBT',W/2,18,{align:'center'});
+     doc.setLineWidth(.5);doc.line(margin,21,W-margin,21);
+     doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('Candidate Name:',margin,28);doc.setFont('helvetica','normal');doc.text(String(S.name||'—'),43,28);
+     doc.setFont('helvetica','bold');doc.text('Roll / Test ID:',margin,34);doc.setFont('helvetica','normal');doc.text(String(S.roll||'—'),43,34);
+     doc.setFont('helvetica','bold');doc.text('Test:',110,28);doc.setFont('helvetica','normal');doc.text(title,123,28);
+     doc.setFont('helvetica','bold');doc.text('Date:',110,34);doc.setFont('helvetica','normal');doc.text(String(S.date||now),123,34);
+   };
+   const subject=(s,top)=>{
+     const start=s*cfg.per,end=Math.min(start+cfg.per,N()),rows=end-start;
+     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(SUB[s],margin,top);
+     doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('Question',margin,top+5);
+     doc.text('Recorded response',45,top+5);doc.text('Correct answer',92,top+5);doc.text('Status',139,top+5);doc.text('Marks',175,top+5);
+     let y=top+10;
+     for(let j=start;j<end;j++,y+=5.8){
+       const e=E[j],resp=S.q[j].a||'—',cor=S.mode==='B'?'—':e.c||'—';
+       doc.setFontSize(7);doc.text(String(j-start+1),margin,y);
+       doc.text(String(resp),45,y);doc.text(String(cor),92,y);
+       doc.text(String(e.r),139,y);doc.text(String(e.m),175,y);
+       if(!isNum(j)){ // compact A-D bubbles
+         ['A','B','C','D'].forEach((o,k)=>pdfBubble(doc,62+k*6,y-1.5,o,String(resp).toUpperCase()===o));
+       }
+       doc.setDrawColor(220);doc.line(margin,y+2,W-margin,y+2);
+     }
+     return y+2;
+   };
+   header();
+   let y=43;
+   for(let s=0;s<SUB.length;s++){
+     if(y>268){doc.addPage();header();y=43;}
+     y=subject(s,y)+7;
+   }
+   if(y>270){doc.addPage();header();y=43;}
+   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('SUMMARY',margin,y);
+   doc.setFont('helvetica','normal');doc.setFontSize(8);
+   doc.text(`Score: ${sm.score} / ${N()*cfg.pos}`,margin,y+6);
+   doc.text(`Accuracy: ${sm.acc}%`,margin+55,y+6);
+   doc.text(`Correct: ${sm.E.filter(e=>e.r==='Correct').length}`,margin+105,y+6);
+   doc.text(`Incorrect: ${sm.E.filter(e=>e.r==='Incorrect').length}`,margin+145,y+6);
+   doc.save(`JEE_Response_Sheet_${String(S.roll||S.name||'Mock').replace(/[^\w-]+/g,'_')}.pdf`);
+ }catch(e){
+   alert('Direct PDF generation needs one-time internet access. I will open the print-ready response sheet instead.');
+   dash();setTimeout(()=>print(),100);
+ }
 }
 /* ---------- Cloud sync (GitHub Gist) + JSON backup ---------- */
 const dump=()=>({cfg:Store.get('nta_cfg',{}),hist:Store.get('nta_hist',[]),sess:Store.get('nta_sess')});
