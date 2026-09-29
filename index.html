@@ -1,29 +1,32 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JEE Mock CBT · NTA-style test simulator</title>
-<meta name="description" content="Free NTA-style JEE Main/Advanced CBT simulator with palette, timer, answer-key evaluation and deep performance analysis.">
-<meta name="author" content="suryansh1807"><meta name="theme-color" content="#0f172a">
+<title>JEE Mock CBT · Computer-based test platform for JEE aspirants</title>
+<meta name="description" content="Attempt full-length JEE mock tests in an exam-accurate computer-based interface and get detailed performance analysis after every attempt.">
+<meta name="theme-color" content="#0b1220">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/professional.css">
 </head><body>
 <div id="land">
- <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
- <nav class="hn"><div class="logo"><svg width="34" height="34" viewBox="0 0 56 56"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg><b>JEE MOCK CBT</b></div>
-  <div class="home-actions"><span id="profileChip"></span><button class="gbtn" onclick="profileSetup()">Profile</button><button class="gbtn" onclick="settings()">⚙ Test Settings</button></div></nav>
+ <nav class="hn"><div class="logo"><svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg><b>JEE Mock CBT</b></div>
+  <div class="home-actions"><span id="profileChip"></span><button class="gbtn" onclick="profileSetup()">Profile</button><button class="gbtn" onclick="settings()">Settings</button></div></nav>
  <main class="hm">
-  <section class="hero rv" style="--i:0"><span class="pill">NTA-style CBT simulator</span><h1>Train like it's <em>exam day</em>.</h1>
-   <p>Upload any paper, attempt it in a clean NTA-style CBT interface, and review your performance after submission.</p><div id="profileBanner" class="profile-banner gl"></div></section>
+  <section class="hero"><span class="pill">Computer-based test platform</span><h1>Practise in real <em>exam conditions</em>.</h1>
+   <p>Full-length mock tests in an exam-accurate interface, followed by a detailed breakdown of your score, accuracy and time management.</p>
+   <div class="hero-points"><span>Exam-style interface</span><span>Scheduled test series</span><span>Instant analysis</span></div>
+   <div id="profileBanner" class="profile-banner gl"></div></section>
   <div id="resumeBox" class="gl" hidden></div>
-  <div class="stats" id="stats"></div>
-  <section class="backend-tests-section" id="backendTestsSection">
-   <div class="backend-tests-head"><div><div class="gtm-kicker">LIVE TEST PORTAL</div><h2 style="margin:6px 0 4px;color:#fff;letter-spacing:-.3px;text-transform:none;font-size:24px">Tests from Admin Portal</h2><p class="mut" style="margin:0">Tests created and scheduled by the admin appear here automatically.</p></div><button class="gbtn" id="refreshBackendTests">↻ Refresh</button></div>
-   <div id="backendTests" class="backend-tests-grid"><div class="backend-loading">Loading tests…</div></div>
+  <section class="sec" id="backendTestsSection">
+   <div class="sec-head"><div><div class="kicker">Test series</div><h2>Upcoming Tests</h2><p class="mut">Tests unlock automatically at their scheduled time.</p></div><button class="gbtn" id="refreshBackendTests">Refresh</button></div>
+   <div id="backendTests" class="bt-grid"><div class="bt-empty">Loading tests…</div></div>
   </section>
-  <h2>Performance analysis</h2><div class="anl" id="anl"></div>
-  <h2>Previous tests</h2><div id="hist"></div>
-  <p id="paperInfo" class="mut" style="text-align:center"></p>
-  <p class="credit">Built by <b>suryansh1807</b> · Unofficial practice tool, not affiliated with NTA</p>
+  <section class="sec"><div class="sec-head"><div><div class="kicker">Overview</div><h2>Your progress</h2></div></div><div class="stats" id="stats"></div><div class="anl" id="anl"></div></section>
+  <section class="sec"><div class="sec-head"><div><div class="kicker">History</div><h2>Previous attempts</h2></div></div><div id="hist"></div></section>
+  <p id="paperInfo" hidden></p>
+  <footer class="site-foot"><b>JEE Mock CBT</b><span>Independent practice platform. Not affiliated with or endorsed by the National Testing Agency.</span></footer>
  </main>
 </div>
 <div id="app" hidden>
@@ -33,10 +36,9 @@
  <div id="obar"><b>JEE MAIN</b><div id="tabs"></div></div>
  <main>
   <section id="left">
-   <div id="bar"><label class="btn">Upload Your Paper (PDF)<input type="file" accept="application/pdf" hidden onchange="loadPdf(this.files[0])"></label>
-    <button class="btn w" onclick="zoom(-25)">−</button><span id="zl">100%</span><button class="btn w" onclick="zoom(25)">+</button>
+   <div id="bar"><button class="btn w" onclick="zoom(-25)">−</button><span id="zl">100%</span><button class="btn w" onclick="zoom(25)">+</button>
     Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></div>
-   <div id="pdf">No paper loaded.<br>Upload a PDF to view it here.</div>
+   <div id="pdf">Loading question paper…</div>
   </section>
   <aside id="right">
    <div class="badge" id="badge"></div>
@@ -61,5 +63,5 @@
 <script src="js/app.js"></script>
 <script src="js/analysis.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/backend-tests.js?v=4"></script>
+<script src="js/backend-tests.js?v=5"></script>
 </body></html>

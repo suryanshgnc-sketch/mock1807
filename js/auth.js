@@ -23,21 +23,16 @@ window.mock1807Auth = {
 
   const style = document.createElement('style');
   style.textContent = `
-    #authGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
-      padding:24px;background:radial-gradient(circle at 50% 15%,rgba(124,156,255,.14),transparent 38%),#080a0d;
-      font-family:inherit}
+    #authGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b1220;font-family:Inter,system-ui,sans-serif}
     #authGate[hidden]{display:none}
-    .auth-card{width:min(470px,100%);padding:34px;border:1px solid rgba(255,255,255,.10);border-radius:24px;
-      background:rgba(20,22,26,.96);box-shadow:0 30px 100px rgba(0,0,0,.55);text-align:center}
-    .auth-logo{width:64px;height:64px;margin:0 auto 18px;border-radius:18px;display:grid;place-items:center;
-      background:linear-gradient(135deg,#f7941d,#ffb45c);color:#111;font-size:27px;font-weight:900}
-    .auth-card h1{margin:0 0 8px;font-size:28px;letter-spacing:-.03em;color:#f3f4f6}
-    .auth-card p{margin:0 auto 24px;color:#9a9da5;line-height:1.55;max-width:380px}
-    .auth-google{width:100%;border:1px solid #343840;border-radius:13px;background:#fff;color:#15171b;
-      padding:13px 16px;font:700 15px inherit;cursor:pointer;transition:.18s}
-    .auth-google:hover{transform:translateY(-1px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    .auth-status{min-height:20px;margin-top:14px;color:#9a9da5;font-size:13px}
-    .auth-user{margin-top:18px;padding-top:16px;border-top:1px solid #2a2d33;font-size:12px;color:#6f727a}
+    .auth-card{width:min(440px,100%);padding:40px 36px;border:1px solid #22304d;border-radius:20px;background:#111a2e;box-shadow:0 24px 80px rgba(0,0,0,.45);text-align:center}
+    .auth-logo{width:52px;height:52px;margin:0 auto 22px;display:block}
+    .auth-card h1{margin:0 0 10px;font-size:26px;font-weight:700;letter-spacing:-.02em;color:#fff}
+    .auth-card p{margin:0 auto 26px;color:#8b97b1;line-height:1.6;font-size:14.5px;max-width:340px}
+    .auth-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:10px;background:#fff;color:#1f2430;padding:13px 16px;font:600 15px Inter,system-ui,sans-serif;cursor:pointer;transition:filter .15s}
+    .auth-google:hover:not(:disabled){filter:brightness(.94)}.auth-google:disabled{opacity:.6;cursor:wait}
+    .auth-status{min-height:20px;margin-top:14px;color:#8b97b1;font-size:13px}
+    .auth-user{margin-top:20px;padding-top:16px;border-top:1px solid #22304d;font-size:12px;color:#66728d}
   `;
   document.head.appendChild(style);
 
@@ -45,12 +40,12 @@ window.mock1807Auth = {
   gate.id = 'authGate';
   gate.innerHTML = `
     <div class="auth-card">
-      <div class="auth-logo">1807</div>
+      <svg class="auth-logo" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#f7941d"/><path d="M9 29l13 14L47 11" stroke="#2e9e4a" stroke-width="10" fill="none"/></svg>
       <h1>Welcome to JEE Mock CBT</h1>
-      <p>Sign in with Google to save your profile and, in the next step, connect your attempts and scores to the mock1807 backend.</p>
-      <button class="auth-google" id="googleLogin">Continue with Google</button>
+      <p>Sign in to access your scheduled tests, save your attempts and track your performance over time.</p>
+      <button class="auth-google" id="googleLogin"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
       <div class="auth-status" id="authStatus"></div>
-      <div class="auth-user">Your test PDFs remain exactly where you already keep them: <b>GTM-PDFS/</b></div>
+      <div class="auth-user">Independent practice platform · Not affiliated with NTA</div>
     </div>`;
   document.body.appendChild(gate);
 
@@ -59,7 +54,7 @@ window.mock1807Auth = {
 
   login.addEventListener('click', async ()=>{
     login.disabled = true;
-    status.textContent = 'Opening Google…';
+    status.textContent = 'Redirecting to Google…';
     try {
       const {error} = await sb.auth.signInWithOAuth({
         provider: 'google',
@@ -68,7 +63,7 @@ window.mock1807Auth = {
       if(error) throw error;
     } catch(e) {
       console.error(e);
-      status.textContent = e?.message || 'Google sign-in failed.';
+      status.textContent = e?.message || 'Sign-in failed. Please try again.';
       login.disabled = false;
     }
   });

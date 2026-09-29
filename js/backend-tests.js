@@ -1,4 +1,4 @@
-/* mock1807: tests published from the Admin Portal */
+/* Scheduled test series: cards, countdowns and launch */
 'use strict';
 (function(){
   const SUPABASE_URL='https://grgxaewilmfyvndkcfim.supabase.co';
@@ -12,45 +12,39 @@
   function countdown(t){const p=parts(new Date(t.release_at).getTime()-Date.now());return `${p.d}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`}
   function released(t){return new Date(t.release_at).getTime()<=Date.now()}
   function fmtDate(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-  function style(){
-    if(document.getElementById('backendTestStyles'))return;
-    const s=document.createElement('style');s.id='backendTestStyles';s.textContent=`
-      .backend-tests-section{margin:28px 0}.backend-tests-head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:14px}.backend-tests-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}.backend-test-card{position:relative;border:1px solid #2a2d33;background:linear-gradient(180deg,#15181d,#101216);border-radius:18px;padding:20px;overflow:hidden}.backend-test-card:before{content:"";position:absolute;inset:0;background:radial-gradient(500px 160px at 0% 0%,rgba(255,255,255,.055),transparent 65%);pointer-events:none}.backend-test-card h3{margin:7px 0 5px;color:#fff;font-size:20px}.backend-test-meta{color:#9a9da5;font-size:12px;line-height:1.65}.backend-test-count{margin:16px 0;padding:12px;border:1px solid #2a2d33;border-radius:12px;background:#0c0e11}.backend-test-count b{font-size:20px;color:#fff}.backend-test-card.released{border-color:#39423d}.backend-test-card.locked{opacity:.92}.backend-test-status{font-size:10px;font-weight:900;letter-spacing:.12em}.backend-test-status.open{color:#65d391}.backend-test-status.wait{color:#e4bf62}.backend-test-btn{width:100%;margin-top:12px;border:0;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;background:#fff;color:#0a0c0f}.backend-test-btn.locked{background:#1a1d22;color:#9a9da5;border:1px solid #2a2d33}.backend-loading,.backend-empty{border:1px dashed #2a2d33;border-radius:16px;padding:28px;text-align:center;color:#9a9da5}.backend-error{border:1px solid #633039;background:#241417;border-radius:14px;padding:15px;color:#ffabb2}.backend-note{font-size:12px;color:#6f727a;margin-top:10px}@media(max-width:650px){.backend-tests-head{align-items:flex-start;flex-direction:column}}
-    `;document.head.appendChild(s);
-  }
+  function style(){}
   function container(){return $('#backendTests')}
   function render(){
-    style(); const box=container(); if(!box)return;
-    if(!tests.length){box.innerHTML='<div class="backend-empty">No tests have been published yet.<br><span class="backend-note">Create a test from the Admin Portal and it will appear here automatically.</span></div>';return}
-    const sorted=[...tests].sort((a,b)=>new Date(a.release_at)-new Date(b.release_at));
+    const box=container(); if(!box)return;
+    if(!tests.length){box.innerHTML='<div class="bt-empty"><b style="color:#e6ebf5">No tests scheduled yet</b><br>New tests will appear here as soon as they are announced.</div>';return}
+    const sorted=[...tests].sort((a,b)=>(released(b)-released(a))||(new Date(a.release_at)-new Date(b.release_at)));
     box.innerHTML=sorted.map(t=>{
-      const r=released(t), disabled=t.enabled===false;
-      const status=disabled?'DISABLED':r?'AVAILABLE':'UPCOMING';
-      const btn=disabled?'Disabled':r?'Open Test →':'🔒 Opens in '+countdown(t);
-      return `<article class="backend-test-card ${r?'released':'locked'}">
-        <div class="backend-test-status ${r?'open':'wait'}">${status}</div>
+      const r=released(t), q=Number(t.total_questions)||0, m=Number(t.total_marks)||0, d=Number(t.duration_minutes)||180;
+      return `<article class="bt-card">
+        <div class="bt-top"><span class="bt-pill ${r?'live':''}">${r?'Available':'Upcoming'}</span><span class="bt-date">${fmtDate(t.release_at)}</span></div>
         <h3>${esc2(t.name)}</h3>
-        <div class="backend-test-meta">${esc2(t.description||'No description')}<br>${fmtDate(t.release_at)} · ${Number(t.duration_minutes)||180} min · ${Number(t.total_questions)||0} questions · ${Number(t.total_marks)||0} marks</div>
-        <div class="backend-test-count">${r?'<b>Paper released</b><br><span class="backend-test-meta">Question paper · '+(Number(t.total_marks)||0)+' total marks</span>':`<b>${countdown(t.release_at)}</b><br><span class="backend-test-meta">The paper remains locked until release.</span>`}</div>
-        <button class="backend-test-btn ${r?'':'locked'}" ${r&&!disabled?'':'disabled'} data-backend-test="${esc2(t.id)}">${btn}</button>
+        ${t.description?`<p class="bt-desc">${esc2(t.description)}</p>`:''}
+        <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div></div>
+        ${r?'':`<div class="bt-count">Opens in<b>${countdown(t)}</b></div>`}
+        <button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Not yet available'}</button>
       </article>`;
     }).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
   }
   async function load(){
     const box=container();if(!box)return;
-    if(!sb){box.innerHTML='<div class="backend-error">Supabase could not load. Refresh the page.</div>';return}
+    if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
-    if(!sessionData?.session){box.innerHTML='<div class="backend-empty">Sign in with Google to view tests published from the Admin Portal.</div>';return}
+    if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Sign in to view your upcoming tests.</div>';return}
     const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
-    if(error){box.innerHTML=`<div class="backend-error">Could not load tests: ${esc2(error.message)}</div>`;return}
+    if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];render();
   }
   async function launch(id){
     const t=tests.find(x=>Number(x.id)===Number(id));if(!t)return;
     if(!released(t)){render();return alert(`This test opens at ${fmtDate(t.release_at)}.`)}
     const p=getProfile();if(!p.name){profileSetup(true);return}
-    if(!t.paper_url)return alert('This test does not have a question paper attached yet.');
+    if(!t.paper_url)return alert('The question paper for this test is not available yet. Please check back shortly.');
     try{
       const {data:sign,error}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
       if(error||!sign?.signedUrl)throw error||new Error('Could not open the question paper.');

@@ -53,24 +53,22 @@ setInterval(saveSess,5000);addEventListener('beforeunload',saveSess);
 function modal(h){$('#dbox').innerHTML=h;$('#dlg').className='modal'+(S?'':' dk');$('#dlg').hidden=false}
 function closeM(){$('#dlg').hidden=true}
 function settings(){
- modal(`<h3>Test Settings</h3><p class="mut">These settings are configured before a test starts. They are not available inside the exam.</p><div class="f">
+ modal(`<h3>Settings</h3><p class="mut">These settings are configured before a test starts. They are not available inside the exam.</p><div class="f">
  <label>Correct answer score<input id="s1" type="number" min="0" step="0.5" value="${cfg.pos}"></label>
  <label>Negative marking – Section A (MCQ)<input id="s2" type="number" min="0" step="0.5" value="${cfg.negA}"></label>
  <label>Negative marking – Section B (Numerical)<input id="s3" type="number" min="0" step="0.5" value="${cfg.negB}"></label>
  <label>Duration (minutes)<input id="s4" type="number" min="1" value="${cfg.dur}"></label>
  <label>Questions per subject<input id="s5" type="number" min="6" value="${cfg.per}"></label>
  <label>Subject order<select id="s6">${['PCM','MPC','PMC','CPM','CMP','MCP','P','C','M'].map(o=>`<option ${o===cfg.order?'selected':''}>${o}</option>`).join('')}</select></label>
- <hr><b>Backup & Sync</b>
- <input id="s7" type="password" placeholder="GitHub token with 'gist' scope" value="${esc(Store.get('nta_tok',''))}">
- <button class="btn" onclick="cloud('push')">Push ☁</button> <button class="btn" onclick="cloud('pull')">Pull ☁</button>
- <button class="btn w" onclick="exportJ()">Export JSON</button> <label class="btn w">Import JSON<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label></div>
+ <hr><b>Data backup</b>
+ <div><button class="btn w" onclick="exportJ()">Export data</button> <label class="btn w">Import data<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label></div></div>
  <button class="btn g" onclick="saveCfg()">Save Settings</button> <button class="btn w" onclick="closeM()">Cancel</button>`);
 }
 function saveCfg(){
  const v=i=>Math.abs(parseFloat($('#s'+i).value))||0;
  cfg.pos=v(1);cfg.negA=v(2);cfg.negB=v(3);
  if(!(S&&!S.done)){cfg.dur=v(4)||180;cfg.per=Math.max(6,v(5)|0||25);setOrder($('#s6').value);if(S)S.order=cfg.order}
- Store.set('nta_tok',$('#s7').value.trim());Store.set('nta_cfg',cfg);closeM();if(S&&!S.done)render();
+ Store.set('nta_cfg',cfg);closeM();if(S&&!S.done)render();
  if(window._cu){window._cu=0;pick({n:'Custom',custom:2})}
 }
 
@@ -274,7 +272,7 @@ function dash(){
  <p><b>Final Score: ${sm.score} / ${max}</b> &nbsp; Accuracy: ${sm.acc}%</p>
  <table><tr><th>Q.No</th><th>Subject</th><th>Chosen</th><th>Correct</th><th>Time</th><th>Status</th><th>Marks</th></tr>
  ${sm.E.map((e,i)=>`<tr><td>${i+1}</td><td>${SUB[sub(i)]}</td><td>${esc(S.q[i].a)||'—'}</td><td>${S.mode==='B'?'—':esc(e.c)||'—'}</td><td>${mm(S.q[i].t)}</td><td>${e.r}</td><td>${e.m}</td></tr>`).join('')}</table>`;
- $('#report').insertAdjacentHTML('beforeend','<p style="font-size:11px;color:#888">Generated with JEE Mock CBT · suryansh1807</p>');
+ $('#report').insertAdjacentHTML('beforeend','<p style="font-size:11px;color:#888">Generated with JEE Mock CBT</p>');
 }
 
 /* ---------- Answer-key PDF import ---------- */
@@ -355,7 +353,7 @@ addEventListener('keydown',e=>{
  if(S&&!S.done&&!$('#app').hidden&&$('#dlg').hidden&&!e.ctrlKey&&!e.metaKey&&!/^F\d+$/.test(e.key))e.preventDefault();
 },true);
 
-/* ---------- Admin-published tests are rendered by js/backend-tests.js ---------- */
+/* ---------- Scheduled tests are rendered by js/backend-tests.js ---------- */
 /* ---------- Landing / History ---------- */
 function openH(id){
  const r=Store.get('nta_hist',[]).find(x=>x.id===id);
@@ -380,7 +378,7 @@ function home(){
  const S4=[['Tests taken',h.length,''],['Best score',h.length?Math.max(...h.map(pc)):0,'%'],['Average score',h.length?Math.round(h.reduce((a,x)=>a+pc(x),0)/h.length):0,'%'],['Attempt accuracy',acc,'%']];
  $('#stats').innerHTML=S4.map((a,i)=>`<div class="gl st rv" style="--i:${i+1}"><b data-c="${a[1]}" data-s="${a[2]}">0${a[2]}</b><span>${a[0]}</span></div>`).join('');
  // trend chart + subject accuracy
- if(!h.length)$('#anl').innerHTML='<div class="empty" style="grid-column:1/-1">Your analytics appear here after your first test.</div>';
+ if(!h.length)$('#anl').innerHTML='<div class="empty" style="grid-column:1/-1">Your performance analytics will appear here after your first test.</div>';
  else{
   const L=h.slice(0,10).reverse(),W=560,H=190,P=28,n=L.length,X=i=>P+(n>1?i*(W-2*P)/(n-1):(W-2*P)/2),Y=v=>H-P-v/100*(H-2*P);
   const pts=L.map((x,i)=>[X(i),Y(pc(x))]),d=pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
@@ -400,7 +398,7 @@ function home(){
   return `<div class="gl trow rv" style="--i:${i+1}"><div class="ring" style="--p:${p}"><b>${p}%</b></div>
   <div class="tm"><b>${esc(x.type||'Test')}</b> <span class="mut">· ${esc(x.name)} · ${esc(x.date)}</span><div>${x.subs.map(u=>`<span class="chip">${u.n.slice(0,3)} ${u.m}</span>`).join('')}</div></div>
   <div class="sc">${x.score}/${x.max}${d===null?'':`<small class="${d>=0?'up':'dn'}">${d>=0?'▲':'▼'} ${Math.abs(d)}</small>`}</div>
-  <div><button class="gbtn" onclick="openH(${x.id})">Analysis →</button> <button class="xb" title="Delete" onclick="delH(${x.id})">✕</button></div></div>`}).join(''):'<div class="empty">No tests yet – create one from the Admin Portal.</div>';
+  <div><button class="gbtn" onclick="openH(${x.id})">Analysis →</button> <button class="xb" title="Delete" onclick="delH(${x.id})">✕</button></div></div>`}).join(''):'<div class="empty">No attempts yet. Your results will appear here after you complete a test.</div>';
  document.querySelectorAll('[data-c]').forEach(el=>count(el,+el.dataset.c,el.dataset.s));
  IDB.get().then(r=>{$('#paperInfo').innerHTML=r?`Saved paper: <b>${esc(r.name)}</b> · <a href="#" onclick="IDB.del().then(home);return false" style="color:#9db3ff">remove</a>`:''});
 }
