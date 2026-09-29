@@ -19,6 +19,7 @@ begin
 end $$;
 grant execute on function public.admin_update_student(uuid,text,boolean) to authenticated;
 
+drop function if exists public.admin_student_snapshot();
 create or replace function public.admin_student_snapshot()
 returns table(id uuid, name text, photo_url text, created_at timestamptz, blocked boolean, attempts bigint, submitted bigint, best_score numeric, last_activity timestamptz)
 language sql security definer set search_path=public stable as $$
@@ -42,6 +43,7 @@ end $$;
 drop trigger if exists trg_guard_blocked_attempts on public.attempts;
 create trigger trg_guard_blocked_attempts before insert on public.attempts for each row execute function public.guard_blocked_attempts();
 
+drop function if exists public.admin_test_stats(bigint);
 create or replace function public.admin_test_stats(p_test_id bigint)
 returns table(attempts bigint, submitted bigint, avg_score numeric, avg_time_seconds numeric, highest_score numeric)
 language sql security definer set search_path=public stable as $$

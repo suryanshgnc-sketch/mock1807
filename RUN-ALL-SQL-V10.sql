@@ -66,6 +66,7 @@ end $$;
 grant execute on function public.publish_answer_key(bigint, text) to authenticated;
 
 -- 5) Student: own declared results
+drop function if exists public.get_my_results();
 create or replace function public.get_my_results()
 returns table(test_id bigint, name text, score numeric, max_score numeric,
               correct_count int, incorrect_count int, unanswered_count int)
@@ -78,6 +79,7 @@ language sql security definer set search_path = public stable as $$
 grant execute on function public.get_my_results() to authenticated;
 
 -- 6) Leaderboard (only tests whose key is published)
+drop function if exists public.get_leaderboard(bigint);
 create or replace function public.get_leaderboard(p_test_id bigint default null)
 returns table(rank bigint, user_id uuid, name text, photo_url text, score numeric, max_score numeric,
               correct_count bigint, time_taken_seconds bigint, tests_taken bigint, is_me boolean)
@@ -158,6 +160,7 @@ create index if not exists idx_audit_created on public.admin_audit_log(created_a
 -- ---------- ATTEMPT LIMIT + IMMUTABLE SNAPSHOT ----------
 drop trigger if exists trg_guard_test_attempt_limit on public.attempts;
 
+drop function if exists public.start_test_attempt(bigint);
 create or replace function public.start_test_attempt(p_test_id bigint)
 returns table(
   id uuid,
@@ -172,6 +175,7 @@ returns table(
   max_score numeric
 )
 language plpgsql security definer set search_path=public as $$
+#variable_conflict use_column
 declare
   v_uid uuid := auth.uid();
   t public.tests%rowtype;
@@ -285,6 +289,7 @@ end; $$;
 grant execute on function public.save_attempt_answers(uuid,jsonb) to authenticated;
 
 -- ---------- SERVER RESUME ----------
+drop function if exists public.get_attempt_resume(uuid);
 create or replace function public.get_attempt_resume(p_attempt_id uuid)
 returns table(
   id uuid,test_id bigint,status text,started_at timestamptz,expires_at timestamptz,
@@ -302,9 +307,11 @@ $$;
 grant execute on function public.get_attempt_resume(uuid) to authenticated;
 
 -- ---------- ATOMIC SUBMISSION ----------
+drop function if exists public.submit_test_attempt(uuid,jsonb);
 create or replace function public.submit_test_attempt(p_attempt_id uuid,p_answers jsonb)
 returns table(id uuid,status text,submitted_at timestamptz,time_taken_seconds bigint)
 language plpgsql security definer set search_path=public as $$
+#variable_conflict use_column
 declare a public.attempts%rowtype; submitted timestamptz:=now(); elapsed bigint; row jsonb;
 begin
   select * into a from public.attempts where id=p_attempt_id and user_id=auth.uid() for update;
@@ -378,6 +385,7 @@ begin
 end; $$;
 grant execute on function public.admin_archive_test(bigint) to authenticated;
 
+drop function if exists public.admin_test_stats(bigint);
 create or replace function public.admin_test_stats(p_test_id bigint)
 returns table(attempts bigint,submitted bigint,in_progress bigint,invalidated bigint,avg_score numeric,median_score numeric,highest_score numeric,avg_time_seconds numeric)
 language sql security definer set search_path=public stable as $$
@@ -386,6 +394,7 @@ $$;
 grant execute on function public.admin_test_stats(bigint) to authenticated;
 
 -- ---------- LEADERBOARD: FIRST ATTEMPT ONLY, RE-ATTEMPTS HIDDEN ----------
+drop function if exists public.get_leaderboard(bigint);
 create or replace function public.get_leaderboard(p_test_id bigint default null)
 returns table(rank bigint,user_id uuid,name text,photo_url text,score numeric,max_score numeric,correct_count bigint,time_taken_seconds bigint,tests_taken bigint,is_me boolean)
 language sql security definer set search_path=public stable as $$
@@ -399,6 +408,7 @@ $$;
 grant execute on function public.get_leaderboard(bigint) to authenticated;
 
 -- ---------- ADMIN AUDIT READ ----------
+drop function if exists public.admin_audit(integer);
 create or replace function public.admin_audit(limit_count integer default 100)
 returns table(id bigint,admin_user_id uuid,action text,target_type text,target_id text,details jsonb,created_at timestamptz)
 language sql security definer set search_path=public stable as $$
@@ -425,9 +435,9 @@ begin
   perform set_config('app.eval','1',true);
   with g as(
     select an.attempt_id,
-      sum(case when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) c,
-      sum(case when an.response is not null and an.response<>'' and not (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) w,
-      sum(case when an.response is null or an.response='' then 0 when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then a.positive_marks_snapshot else -(case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then a.negative_numerical_snapshot else a.negative_mcq_snapshot end) end) sc
+      sum(case when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\d+(\.\d+)?$' and ks[an.question_no]~'^-?\d+(\.\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) c,
+      sum(case when an.response is not null and an.response<>'' and not (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\d+(\.\d+)?$' and ks[an.question_no]~'^-?\d+(\.\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) w,
+      sum(case when an.response is null or an.response='' then 0 when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\d+(\.\d+)?$' and ks[an.question_no]~'^-?\d+(\.\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then a.positive_marks_snapshot else -(case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then a.negative_numerical_snapshot else a.negative_mcq_snapshot end) end) sc
     from public.answers an join public.attempts a on a.id=an.attempt_id
     where a.test_id=p_test_id and a.status='submitted'
     group by an.attempt_id

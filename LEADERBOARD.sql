@@ -5,6 +5,7 @@ alter table public.attempts
   add column if not exists incorrect_count int;
 
 -- Rankings: best submitted attempt per student. p_test_id = null gives overall (sum of best scores).
+drop function if exists public.get_leaderboard(bigint);
 create or replace function public.get_leaderboard(p_test_id bigint default null)
 returns table(rank bigint, user_id uuid, name text, photo_url text, score numeric, max_score numeric,
               correct_count bigint, time_taken_seconds bigint, tests_taken bigint, is_me boolean)

@@ -44,3 +44,11 @@ Do not run the files inside `legacy-sql/` for the V10 build; they are retained o
 ## Important
 
 The server is now authoritative for exam time and submission state. The browser timer is only a display.
+
+## Hotfix: "column reference id is ambiguous" on Start Test
+If your database was already created, run `HOTFIX-START-TEST-AMBIGUOUS-ID.sql` once in Supabase SQL Editor.
+Fresh installs using the updated `RUN-ALL-SQL-V10.sql` already include the fix.
+
+## Notes (final build)
+- Numerical answers were previously mis-scored by a regex escaping bug; fixed in all V10 SQL. If you already published keys, re-publish each once.
+- UI: cinematic layer (intro reel, scroll-scrubbed trailer, 3D tilt cards, confetti on results).

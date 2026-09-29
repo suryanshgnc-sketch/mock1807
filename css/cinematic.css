@@ -66,3 +66,19 @@
 body.in-exam #cineGrain,body.in-exam .cine-ticker,body.in-exam #cineTop,body.in-exam .cine-aurora{display:none}
 @media(hover:none),(max-width:800px){.cine-tilt{transform:none!important}#cineGrain{display:none}}
 @media(prefers-reduced-motion:reduce){#cineIntro{display:none}#cineGrain,.cine-aurora i,.x-stage,.bt-card.is-live{animation:none}.cine-in{opacity:1;transform:none;filter:none;transition:none}}
+/* v2: kinetic trailer, confetti, skeletons */
+.cine-trailer{position:relative;height:340vh;margin:8vh 0}
+.cine-trailer .ct-in{position:sticky;top:0;height:100vh;display:grid;place-items:center;overflow:hidden;text-align:center}
+.cine-trailer .ct-in:before{content:"";position:absolute;inset:0;background:radial-gradient(60vmax 40vmax at 50% 50%,hsl(var(--h,170) 80% 45%/.22),transparent 70%);transition:background .3s}
+.ct-w{position:absolute;font:800 clamp(44px,12vw,180px)/.95 'Bricolage Grotesque',Inter,sans-serif;letter-spacing:-.03em;color:#fff;opacity:0;transform:translateY(40px) scale(.9);filter:blur(18px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1),filter .7s;text-transform:uppercase;padding:0 4vw}
+.ct-w small{display:block;font:600 clamp(11px,1.4vw,16px) 'JetBrains Mono',monospace;letter-spacing:.5em;color:var(--cx);margin-bottom:2vh}
+.ct-w.on{opacity:1;transform:none;filter:none}
+.ct-w.past{opacity:0;transform:translateY(-40px) scale(1.1);filter:blur(18px)}
+.ct-w em{font-style:normal;background:linear-gradient(100deg,var(--cx),var(--cy));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ct-bar{position:absolute;bottom:9vh;left:50%;width:min(360px,60vw);height:2px;transform:translateX(-50%);background:#ffffff1c}
+.ct-bar i{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(var(--p,0));background:linear-gradient(90deg,var(--cx),var(--cy))}
+.cine-confetti{position:fixed;inset:0;pointer-events:none;z-index:99998}
+.bt-empty{position:relative;overflow:hidden}
+.bt-empty:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff14 50%,transparent 70%);transform:translateX(-100%);animation:sk 1.4s infinite}
+@keyframes sk{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.cine-trailer{height:auto}.cine-trailer .ct-in{position:static;height:auto;padding:8vh 0}.ct-w{position:static;opacity:1;transform:none;filter:none;display:block;margin:2vh 0}}

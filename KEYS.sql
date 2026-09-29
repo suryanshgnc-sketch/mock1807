@@ -49,6 +49,7 @@ end $$;
 grant execute on function public.publish_answer_key(bigint, text) to authenticated;
 
 -- Student: own declared results only.
+drop function if exists public.get_my_results();
 create or replace function public.get_my_results()
 returns table(test_id bigint, name text, score numeric, max_score numeric, correct_count int, incorrect_count int, unanswered_count int)
 language sql security definer set search_path = public stable as $$
