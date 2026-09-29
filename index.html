@@ -5,9 +5,10 @@
 <meta name="author" content="suryansh1807"><meta name="copyright" content="MDCCCVII"><meta name="theme-color" content="#050706"><meta name="robots" content="index,follow"><meta name="color-scheme" content="dark">
 <meta property="og:type" content="website"><meta property="og:title" content="MDCCCVII Tests · Compete under real exam conditions"><meta property="og:description" content="Scheduled full-length JEE mock tests, exam-grade interface, verified results and live rankings."><meta property="og:image" content="assets/mdcccvii-logo.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:title" content="MDCCCVII Tests"><meta name="twitter:description" content="Scheduled JEE mock tests with live rankings.">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.png?v=7" type="image/png">
+<link rel="shortcut icon" href="assets/favicon.png?v=7" type="image/png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/mdcccvii-logo.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png?v=7">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -25,7 +26,7 @@
 <div id="land">
 <nav class="x-nav" id="xNav"><a class="x-brand" href="#top" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></a>
  <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
- <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" hidden>Install app</button></div></nav>
+ <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button></div></nav>
 <main class="x-main" id="top">
 <div class="x-hero"><div class="x-mark" aria-hidden="true">MDCCCVII</div>
  <div class="x-hero-in"><div class="x-copy">
@@ -45,7 +46,7 @@
 <div class="x-marq" aria-hidden="true"><div><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i></div></div>
 <div id="resumeBox" class="gl" hidden></div>
 <div id="homeCommandDeck" class="home-command-deck rv">
-  <div class="deck-main"><div class="deck-kicker">YOUR COMMAND DECK</div><h2>Everything you need before the clock starts.</h2><p id="deckSub">Your next scheduled test, recent activity and quick controls — in one place.</p><div class="deck-actions"><a class="x-btn solid" href="#tests">Browse tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><button class="x-btn ghost" id="deckInstall" hidden>Install MDCCCVII</button></div></div>
+  <div class="deck-main"><div class="deck-kicker">YOUR COMMAND DECK</div><h2>Everything you need before the clock starts.</h2><p id="deckSub">Your next scheduled test, recent activity and quick controls — in one place.</p><div class="deck-actions"><a class="x-btn solid" href="#tests">Browse tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><button class="x-btn ghost" id="deckInstall" type="button">Install as Web App</button></div></div>
   <div class="deck-stats"><div><span>NEXT TEST</span><b id="deckNext">Loading…</b><small id="deckNextMeta">Checking schedule</small></div><div><span>ACCOUNT</span><b id="deckStudent">Signed in</b><small id="deckStudentMeta">Your attempts stay synced</small></div><div><span>MODE</span><b>EXAM</b><small>Timed · ranked · tracked</small></div></div>
 </div>
 <section class="x-sec rv" id="backendTestsSection"><a id="tests"></a><div class="x-head"><div><div class="x-k"><b>I</b><span>Tests</span></div><h2>Upcoming tests</h2><p>Every test unlocks at its scheduled time, the same for everyone.</p></div><button class="x-btn ghost" id="refreshBackendTests">Refresh</button></div>
@@ -121,5 +122,43 @@
 <noscript><p style="position:fixed;bottom:0;left:0;right:0;padding:12px;text-align:center;background:#86ff3f;color:#061006;font:700 13px Inter,sans-serif">JavaScript is required to take tests on MDCCCVII.</p></noscript>
 <script>
 (()=>{let d=null;const btn=document.getElementById('installAppBtn'),deck=document.getElementById('deckInstall');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();d=e;[btn,deck].forEach(x=>{if(x)x.hidden=false});});async function go(){if(!d){alert('On Chrome/Edge, open the browser menu and choose “Install MDCCCVII Tests” or “Add to Home screen”.');return} d.prompt();await d.userChoice;d=null;[btn,deck].forEach(x=>{if(x)x.hidden=true});} [btn,deck].forEach(x=>x&&x.addEventListener('click',go));window.addEventListener('appinstalled',()=>{[btn,deck].forEach(x=>{if(x)x.hidden=true});});if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);})();
+</script>
+<div id="installModal" class="install-modal" hidden aria-hidden="true">
+  <div class="install-backdrop" data-install-close></div>
+  <section class="install-card" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <button class="install-close" type="button" data-install-close aria-label="Close">×</button>
+    <img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests" class="install-logo">
+    <div class="install-kicker">MDCCCVII · APP</div>
+    <h2 id="installTitle">Install MDCCCVII Tests</h2>
+    <p id="installText">Get a proper app-style experience with a home-screen icon, standalone window and faster loading.</p>
+    <button id="installConfirm" class="x-btn solid install-confirm" type="button">Install Web App</button>
+    <div id="installManual" class="install-manual" hidden>
+      <b>Install manually</b>
+      <p><strong>Chrome / Edge:</strong> open the browser menu and choose <em>Install MDCCCVII Tests</em> or <em>Add to Home screen</em>.</p>
+      <p><strong>Android:</strong> browser menu → <em>Install app</em> / <em>Add to Home screen</em>.</p>
+      <p><strong>iPhone / iPad:</strong> Share → <em>Add to Home Screen</em>.</p>
+    </div>
+  </section>
+</div>
+<script>
+(()=>{
+  let deferred=null, installed=false;
+  const modal=document.getElementById('installModal'), confirm=document.getElementById('installConfirm'), manual=document.getElementById('installManual');
+  const buttons=[document.getElementById('installAppBtn'),document.getElementById('deckInstall')].filter(Boolean);
+  const close=()=>{modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('install-open')};
+  const open=()=>{if(installed)return;modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('install-open'); if(!deferred){confirm.textContent='Show install instructions';manual.hidden=false;}};
+  buttons.forEach(b=>b.addEventListener('click',open));
+  document.querySelectorAll('[data-install-close]').forEach(x=>x.addEventListener('click',close));
+  window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)close()});
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;confirm.textContent='Install Web App';manual.hidden=true;});
+  confirm.addEventListener('click',async()=>{
+    if(!deferred){manual.hidden=false;return;}
+    deferred.prompt();
+    try{await deferred.userChoice;}finally{deferred=null;close();}
+  });
+  window.addEventListener('appinstalled',()=>{installed=true;close();buttons.forEach(b=>b.textContent='App Installed');});
+  if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true){installed=true;buttons.forEach(b=>{b.textContent='App Installed';b.disabled=true;});}
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=7').catch(()=>{});
+})();
 </script>
 </body></html>

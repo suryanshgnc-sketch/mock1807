@@ -2,14 +2,14 @@
   "name": "MDCCCVII Tests",
   "short_name": "MDCCCVII",
   "description": "Exam-grade mock tests and performance analytics.",
-  "start_url": "./",
+  "start_url": "./index.html?app=1",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#050706",
   "theme_color": "#72ff45",
   "icons": [
-    {"src":"assets/mdcccvii-logo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
+    {"src":"assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
     {"src":"assets/favicon.png","sizes":"192x192","type":"image/png","purpose":"any"}
   ]
 }
