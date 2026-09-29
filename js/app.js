@@ -272,7 +272,7 @@ function dash(){
  <p><b>Final Score: ${sm.score} / ${max}</b> &nbsp; Accuracy: ${sm.acc}%</p>
  <table><tr><th>Q.No</th><th>Subject</th><th>Chosen</th><th>Correct</th><th>Time</th><th>Status</th><th>Marks</th></tr>
  ${sm.E.map((e,i)=>`<tr><td>${i+1}</td><td>${SUB[sub(i)]}</td><td>${esc(S.q[i].a)||'—'}</td><td>${S.mode==='B'?'—':esc(e.c)||'—'}</td><td>${mm(S.q[i].t)}</td><td>${e.r}</td><td>${e.m}</td></tr>`).join('')}</table>`;
- $('#report').insertAdjacentHTML('beforeend','<p style="font-size:11px;color:#888">Generated with JEE Mock CBT</p>');
+ $('#report').insertAdjacentHTML('beforeend','<p style="font-size:11px;color:#888">Generated with MDCCCVII Tests</p>');
 }
 
 /* ---------- Answer-key PDF import ---------- */
