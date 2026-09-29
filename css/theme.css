@@ -1,0 +1,49 @@
+/* Clean visual refresh. Loaded after style.css, so it overrides it. */
+:root{--bg:#0f172a;--sf:#1e293b;--sf2:#273449;--bd:#334155;--tx:#e2e8f0;--mu:#94a3b8;--ac:#3b82f6;--ok:#22c55e;--er:#ef4444;--wn:#f59e0b}
+body{font:14px/1.5 Inter,system-ui,"Segoe UI",Arial,sans-serif;background:#f1f5f9;color:#0f172a}
+.orb{display:none}
+#land{background:var(--bg);color:var(--tx)}
+.hn{background:var(--bg);backdrop-filter:none;border-color:var(--bd)}
+.hero{padding:40px 0 12px}.hero h1{letter-spacing:-1px;color:var(--tx)}
+.hero em{background:none;color:var(--ac);animation:none}.hero p{color:var(--mu)}
+.pill{background:var(--sf);border-color:var(--bd);color:var(--mu)}
+.gl,.tcard{background:var(--sf);border:1px solid var(--bd);border-radius:12px;backdrop-filter:none}
+.gl:before,.tcard:before{display:none}
+.tcard:hover{transform:none;border-color:var(--ac);box-shadow:none}
+.hm h2{color:var(--mu);letter-spacing:1.5px;margin:30px 0 12px}
+.pbtn{background:var(--ac)}.gbtn{background:var(--sf2);border-color:var(--bd)}
+.st b,.tcard b,.hn b,.anl h3,.tm>b,.sc,.bar em,.ring b{color:var(--tx)}
+.ring:before{background:var(--sf)}.ring{background:conic-gradient(var(--ac) calc(var(--p)*1%),var(--bd) 0)}
+.bar i{background:var(--bd)}.bar i:after{background:var(--ac)}
+.tr .ln{stroke:var(--ac)}.tr .ar{opacity:.15}.tr circle{fill:var(--sf);stroke:var(--ac)}
+.dk .box{background:var(--sf);border-color:var(--bd);border-radius:12px}.dk input,.dk select{background:var(--bg);border-color:var(--bd)}
+.trow:hover{transform:none;border-color:var(--ac)}
+/* gamification */
+#gam{padding:16px 18px;margin-bottom:12px;display:grid;gap:10px}
+#gam .lv{display:flex;justify-content:space-between;align-items:baseline}#gam .lv b{font-size:18px;color:#fff}
+#gam .xp{height:8px;border-radius:6px;background:var(--bd);overflow:hidden}#gam .xp i{display:block;height:100%;background:var(--ok)}
+.bdg{display:inline-block;font-size:12px;padding:3px 10px;border-radius:14px;margin:2px 4px 0 0;border:1px solid var(--bd);color:var(--mu)}.bdg.on{background:#14532d;border-color:var(--ok);color:#bbf7d0}
+/* exam screen */
+header{border-bottom:1px solid #e2e8f0;box-shadow:0 1px 3px #0001}
+#obar{background:#1e293b}#obar>b{font-size:16px;letter-spacing:1px}
+#obar .tab{background:#334155;border-radius:6px}#obar .tab.on{background:var(--ac);box-shadow:none}
+#left{border-color:#e2e8f0}#bar{background:#f8fafc;border-bottom:1px solid #e2e8f0}
+#right{background:#f8fafc}.qa,#grid{border-radius:8px;border-color:#e2e8f0}
+#qh{background:#1e293b;border-radius:8px 8px 0 0}
+.opt{border-radius:8px}.opt:hover{background:#eff6ff;border-color:var(--ac)}
+.btn,.nb{border-radius:6px!important}.acts .btn{font-size:11px}
+footer{background:#fff}
+/* results & analysis */
+#res{max-width:1180px;padding:20px}
+.card{border-top:0;border:1px solid #e2e8f0;border-radius:12px;box-shadow:none}
+th{background:#1e293b}
+.hero2{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center}
+.kp4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kp4 div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:left}
+.kp4 b{display:block;font-size:22px}.kp4 span{font-size:12px;color:#64748b}
+.big{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1}
+.ins{list-style:none;padding:0;margin:0}.ins li{padding:9px 12px;margin:6px 0;border-radius:8px;background:#f8fafc;border-left:4px solid var(--ac)}
+.ins li.g{border-color:var(--ok)}.ins li.b{border-color:var(--er)}.ins li.w{border-color:var(--wn)}
+.sb{display:flex;height:10px;border-radius:6px;overflow:hidden;background:#e2e8f0;min-width:120px}.sb i{display:block}
+.flt button{margin:0 4px 8px 0;padding:5px 12px;border:1px solid #cbd5e1;border-radius:14px;background:#fff}.flt button.on{background:#1e293b;color:#fff}
+@media(max-width:800px){.hero2{grid-template-columns:1fr}.kp4{grid-template-columns:1fr 1fr}}
