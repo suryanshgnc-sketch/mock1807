@@ -14,28 +14,39 @@
   function fmtDate(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function style(){}
   function container(){return $('#backendTests')}
+  function tz(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}
+  function tiles(ms){const p=parts(ms);return [['d',p.d,'Days'],['h',p.h,'Hrs'],['m',p.m,'Min'],['s',p.s,'Sec']].map(([k,v,l])=>`<div><b data-u="${k}">${String(v).padStart(2,'0')}</b><small>${l}</small></div>`).join('')}
+  function calLink(t){const s=new Date(t.release_at),e=new Date(s.getTime()+(Number(t.duration_minutes)||180)*60000),f=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.name)+'&dates='+f(s)+'/'+f(e)+'&details='+encodeURIComponent('MDCCCVII Tests - starts at the scheduled time.')}
+  function card(t){
+    const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180;
+    return `<article class="bt-card ${r?'is-live':''}">
+      <div class="bt-top"><span class="bt-pill ${r?'live':''}">${r?'Live now':'Upcoming'}</span><span class="bt-date">${tz(t.release_at)}</span></div>
+      <h3>${esc2(t.name)}</h3>${t.description?`<p class="bt-desc">${esc2(t.description)}</p>`:''}
+      <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div></div>
+      ${r?'':`<div class="cd" data-cd="${esc2(t.id)}"><span>Opens in</span><div class="cd-t">${tiles(new Date(t.release_at)-Date.now())}</div></div>`}
+      <button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>
+      ${r?'':`<a class="bt-cal" href="${calLink(t)}" target="_blank" rel="noopener">+ Add to calendar</a>`}
+    </article>`}
   function render(){
     const box=container(); if(!box)return;
-    if(!tests.length){box.innerHTML='<div class="bt-empty"><b style="color:#e6ebf5">No tests scheduled yet</b><br>New tests will appear here as soon as they are announced.</div>';return}
-    const sorted=[...tests].sort((a,b)=>(released(b)-released(a))||(new Date(a.release_at)-new Date(b.release_at)));
-    box.innerHTML=sorted.map(t=>{
-      const r=released(t), q=Number(t.total_questions)||0, m=Number(t.total_marks)||0, d=Number(t.duration_minutes)||180;
-      return `<article class="bt-card">
-        <div class="bt-top"><span class="bt-pill ${r?'live':''}">${r?'Available':'Upcoming'}</span><span class="bt-date">${fmtDate(t.release_at)}</span></div>
-        <h3>${esc2(t.name)}</h3>
-        ${t.description?`<p class="bt-desc">${esc2(t.description)}</p>`:''}
-        <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div></div>
-        ${r?'':`<div class="bt-count">Opens in<b>${countdown(t)}</b></div>`}
-        <button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Not yet available'}</button>
-      </article>`;
-    }).join('');
+    if(!tests.length){box.innerHTML='<div class="bt-empty"><b>No tests scheduled yet</b><br>New tests appear here the moment they are announced. If you were told a test is live and nothing shows, refresh, or contact support.</div>';return}
+    const up=tests.filter(t=>!released(t)).sort((a,b)=>new Date(a.release_at)-new Date(b.release_at));
+    const live=tests.filter(released).sort((a,b)=>new Date(b.release_at)-new Date(a.release_at));
+    const nx=up[0];
+    const feat=nx?`<article class="nt"><div><span class="bt-pill">Next up</span><h3>${esc2(nx.name)}</h3><p>${tz(nx.release_at)} · ${Number(nx.duration_minutes)||180} min · ${Number(nx.total_questions)||0} questions · ${Number(nx.total_marks)||0} marks</p><a class="bt-cal" href="${calLink(nx)}" target="_blank" rel="noopener">+ Add to calendar</a></div><div class="cd" data-cd="${esc2(nx.id)}"><span>Opens in</span><div class="cd-t big">${tiles(new Date(nx.release_at)-Date.now())}</div></div></article>`:'';
+    box.innerHTML=feat+live.map(card).join('')+up.slice(1).map(card).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
   }
+  function tick(){
+    const box=container();if(!box)return;let flip=false;
+    box.querySelectorAll('[data-cd]').forEach(el=>{const t=tests.find(x=>String(x.id)===el.dataset.cd);if(!t)return;const ms=new Date(t.release_at)-Date.now();if(ms<=0){flip=true;return}
+      const p=parts(ms);['d','h','m','s'].forEach(k=>{const n=el.querySelector('[data-u="'+k+'"]'),v=String(p[k]).padStart(2,'0');if(n&&n.textContent!==v)n.textContent=v})});
+    if(flip)render()}
   async function load(){
     const box=container();if(!box)return;
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
-    if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Sign in to view your upcoming tests.</div>';return}
+    if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
     const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];render();
@@ -47,7 +58,7 @@
     if(!t.paper_url)return alert('The question paper for this test is not available yet. Please check back shortly.');
     try{
       const {data:sign,error}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
-      if(error||!sign?.signedUrl)throw error||new Error('Could not open the question paper.');
+      if(error||!sign?.signedUrl){console.error('Paper access failed:',error);throw new Error('Could not open the question paper. This is usually a paper-access permission on our side, not your device. Please refresh and try again, or contact support.')}
       const total=Number(t.total_questions)||75;
       if(total%3!==0)throw new Error('This test has '+total+' questions. The current NTA CBT engine requires a total divisible by 3.');
       cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');window._t=t.name;
@@ -84,7 +95,7 @@
     window.finish=async function(){if(finishing)return;finishing=true;try{await finalizeAttempt()}finally{original();finishing=false}};
     window.__backendFinishPatched=true;
   }
-  function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(document.hidden)return;render()},1000)}
+  function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(!document.hidden)tick()},1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
   async function resumeBackendTest(saved){
     try{
       const t=tests.find(x=>Number(x.id)===Number(saved.backendTestId));

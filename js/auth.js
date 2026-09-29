@@ -38,6 +38,8 @@ window.mock1807Auth = {
     .auth-google:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 36px rgba(114,255,69,.18);filter:brightness(1.04)}.auth-google:disabled{opacity:.6;cursor:wait}
     .auth-status{min-height:20px;margin-top:14px;color:#91a18f;font-size:13px}
     .auth-legal{margin-top:14px;font-size:11px;color:#586257;line-height:1.6}.auth-legal a{color:#9dff85}
+    .auth-priv{list-style:none;margin:20px 0 0;padding:14px 16px;text-align:left;border:1px solid rgba(114,255,69,.14);border-radius:12px;background:rgba(114,255,69,.03);font-size:12px;line-height:1.6;color:#8b988b}.auth-priv li{margin:5px 0}.auth-priv b{color:#d3ecd0}
+    .auth-card{max-height:calc(100vh - 32px);overflow:auto}
     .auth-user{margin-top:20px;padding-top:16px;border-top:1px solid rgba(114,255,69,.1);font-size:11px;color:#4f594f}
   `;
   document.head.appendChild(style);
@@ -52,7 +54,8 @@ window.mock1807Auth = {
       <p>Sign in to access scheduled tests, preserve your attempts and see declared results and rankings across the series.</p>
       <button class="auth-google" id="googleLogin"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
       <div class="auth-status" id="authStatus"></div>
-      <div class="auth-legal">By continuing you agree to our <a href="legal.html#terms" target="_blank">Terms of Use</a> and <a href="legal.html#privacy" target="_blank">Privacy Policy</a>.</div>
+      <ul class="auth-priv"><li><b>What we store:</b> your Google name, email and photo, plus your test attempts and scores.</li><li><b>Who sees it:</b> other students see your name, photo and scores on the leaderboard. Never your email.</li><li><b>Cookies:</b> only essential browser storage for login and test progress. No ads, no tracking.</li><li><b>Under 18?</b> Please use this with a parent or guardian's consent.</li></ul>
+      <div class="auth-legal">By continuing you agree to our <a href="legal.html#terms" target="_blank" rel="noopener">Terms</a>, <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="legal.html#cookies" target="_blank" rel="noopener">Cookies &amp; Storage</a> notice.</div>
       <div class="auth-user">© 2026 MDCCCVII · Developed by suryansh1807</div>
     </div>`;
   document.body.appendChild(gate);
