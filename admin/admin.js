@@ -33,13 +33,13 @@ async function loadOverview(){
   <div class="section-head"><h2>Recent tests</h2><button class="ghost" onclick="setView('tests')">View all →</button></div>${testsTable(t.data||[])}
   <div class="section-head"><h2>Recent attempts</h2></div>${attemptsTable(attempts.slice(0,12))}`;
 }
-function testsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No tests yet. Create your first test above.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>Test</th><th>Release</th><th>Duration</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>{const [s,c]=statusFor(x);return `<tr><td><b>${esc(x.name)}</b><small>${esc(x.description||'')}</small></td><td>${formatDate(x.release_at)}</td><td>${x.duration_minutes} min</td><td>${x.total_questions}</td><td><span class="pill ${c}">${s}</span></td><td><button class="mini" onclick="toggleTest(${x.id},${x.enabled!==false})">${x.enabled===false?'Enable':'Disable'}</button> <button class="mini danger-btn" onclick="deleteTest(${x.id},'${esc(x.name).replace(/'/g,"\\'")}')">Delete</button></td></tr>`}).join('')}</tbody></table></div>`}
+function testsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No tests yet. Create your first test above.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>Test</th><th>Release</th><th>Duration</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>{const [s,c]=statusFor(x);return `<tr><td><b>${esc(x.name)}</b><small>${esc(x.description||'')}</small></td><td>${formatDate(x.release_at)}</td><td>${x.duration_minutes} min</td><td>${x.total_questions}</td><td><span class="pill ${c}">${s}</span></td><td><button class="mini js-toggle" data-id="${x.id}" data-enabled="${x.enabled!==false}">${x.enabled===false?'Enable':'Disable'}</button> <button class="mini danger-btn js-delete" data-id="${x.id}" data-name="${esc(x.name)}">Delete</button></td></tr>`}).join('')}</tbody></table></div>`}
 function attemptsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No attempts yet.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>User</th><th>Test</th><th>Status</th><th>Score</th><th>Correct</th><th>Started</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.user_id?.slice(0,8)||'')}…</td><td>${esc(testName(x.test_id))}</td><td>${esc(x.status)}</td><td>${x.score}/${x.max_score}</td><td>${x.correct_count}</td><td>${formatDate(x.started_at)}</td></tr>`).join('')}</tbody></table></div>`}
 function testName(id){const t=testsCache.find(x=>String(x.id)===String(id));return t?.name||String(id)}
 async function loadTests(){const {data,error}=await db.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,paper_url,enabled,created_at').order('release_at',{ascending:false});if(error)throw error;testsCache=data||[];$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">TEST MANAGEMENT</div><h2>Tests & schedules</h2><p class="muted">Upload PDFs, set exact release times, disable tests, or remove them.</p></div><button class="primary" onclick="openCreateModal()">+ New Test</button></div>${testsTable(data||[])}`}
 async function loadStudents(){const {data,error}=await db.from('profiles').select('id,name,photo_url,created_at').order('created_at',{ascending:false});if(error)throw error;$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">STUDENT DIRECTORY</div><h2>Students</h2><p class="muted">Profiles registered through Google login.</p></div></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>User ID</th><th>Joined</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td><b>${esc(x.name||'Unnamed')}</b></td><td>${esc(x.id)}</td><td>${formatDate(x.created_at)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">No students.</td></tr>'}</tbody></table></div>`}
 async function loadAttempts(){const {data,error}=await db.from('attempts').select('*').order('created_at',{ascending:false});if(error)throw error;$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">ATTEMPT LOG</div><h2>Attempts & scores</h2><p class="muted">Saved sessions will appear here when the student CBT is wired to create and submit attempts.</p></div></div>${attemptsTable(data||[])}`}
-async function render(){try{if(current==='overview')await loadOverview();else if(current==='tests')await loadTests();else if(current==='students')await loadStudents();else await loadAttempts()}catch(e){$('#content').innerHTML=`<div class="hero"><h2 class="danger">Dashboard error</h2><p class="muted">${esc(e.message||e)}</p></div>`}}
+async function render(){try{if(current==='overview')await loadOverview();else if(current==='tests')await loadTests();else if(current==='students')await loadStudents();else await loadAttempts();wireDynamicButtons()}catch(e){$('#content').innerHTML=`<div class="hero"><h2 class="danger">Dashboard error</h2><p class="muted">${esc(e.message||e)}</p></div>`}}
 function setView(v){current=v;document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.view===v));const btn=document.querySelector(`.nav[data-view="${v}"]`);$('#viewTitle').textContent=btn?.textContent||v;render()}
 function openCreateModal(){ $('#modal').classList.remove('hidden');$('#modal').setAttribute('aria-hidden','false'); $('#formError').classList.add('hidden'); const d=new Date(Date.now()+3600000);d.setSeconds(0,0);$('#testForm').release.value=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16); }
 function closeModal(){ $('#modal').classList.add('hidden');$('#modal').setAttribute('aria-hidden','true');$('#testForm').reset();hide('#uploadProgress');}
@@ -53,8 +53,42 @@ async function createTest(e){e.preventDefault();const f=new FormData(e.target);c
 }
 async function toggleTest(id,wasEnabled){const {error}=await db.from('tests').update({enabled:!wasEnabled}).eq('id',id);if(error)throw error;toast(wasEnabled?'Test disabled':'Test enabled');render()}
 async function deleteTest(id,name){if(!confirm(`Delete “${name}”? This removes the test and its answer key. Student attempts linked to it will also be removed.`))return;const {error}=await db.from('tests').delete().eq('id',id);if(error){toast(error.message);return}await db.storage.from(BUCKET).remove([`tests/${id}/question-paper.pdf`,`tests/${id}/answer-key.pdf`]);toast('Test deleted');render()}
-window.openCreateModal=openCreateModal;window.toggleTest=toggleTest;window.deleteTest=deleteTest;window.setView=setView;
-$('.nav');for(const b of document.querySelectorAll('.nav'))b.addEventListener('click',()=>setView(b.dataset.view));
-$('#googleBtn').addEventListener('click',signIn);$('#refresh').addEventListener('click',()=>{toast('Refreshing…');render()});$('#newTestTop').addEventListener('click',openCreateModal);$('#logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload()});$('#testForm').addEventListener('submit',async e=>{try{hide('#formError');await createTest(e)}catch(err){$('#formError').textContent=err.message||String(err);show('#formError');$('#createTestBtn').disabled=false;hide('#uploadProgress')}});document.querySelectorAll('[data-close-modal]').forEach(x=>x.addEventListener('click',closeModal));
+window.openCreateModal=openCreateModal;
+window.toggleTest=toggleTest;
+window.deleteTest=deleteTest;
+window.setView=setView;
+
+function wireDynamicButtons(){
+  document.querySelectorAll('.js-toggle').forEach(btn=>btn.addEventListener('click',async()=>{
+    btn.disabled=true;
+    try{await toggleTest(Number(btn.dataset.id),btn.dataset.enabled==='true');}
+    catch(e){toast(e.message||String(e));btn.disabled=false;}
+  }));
+  document.querySelectorAll('.js-delete').forEach(btn=>btn.addEventListener('click',async()=>{
+    await deleteTest(Number(btn.dataset.id),btn.dataset.name||'this test');
+  }));
+}
+
+async function safeOpenCreateModal(){
+  const modal=document.getElementById('modal');
+  if(!modal){toast('Test builder could not load. Please refresh.');return;}
+  openCreateModal();
+}
+
+document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+document.getElementById('googleBtn').addEventListener('click',signIn);
+document.getElementById('refresh').addEventListener('click',()=>{toast('Refreshing…');render()});
+document.getElementById('newTestTop').addEventListener('click',safeOpenCreateModal);
+document.getElementById('logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload()});
+document.getElementById('testForm').addEventListener('submit',async e=>{
+  try{hide('#formError');await createTest(e)}
+  catch(err){document.getElementById('formError').textContent=err.message||String(err);show('#formError');document.getElementById('createTestBtn').disabled=false;hide('#uploadProgress')}
+});
+document.querySelectorAll('[data-close-modal]').forEach(x=>x.addEventListener('click',closeModal));
+
 db.auth.onAuthStateChange((_e,s)=>{session=s});
-(async()=>{try{if(await requireAdmin())await render()}catch(e){hide('#loading');show('#login');$('#loginError').textContent=e.message||String(e);show('#loginError')}})();
+
+(async()=>{
+  try{if(await requireAdmin())await render()}
+  catch(e){hide('#loading');show('#login');document.getElementById('loginError').textContent=e.message||String(e);show('#loginError')}
+})();
