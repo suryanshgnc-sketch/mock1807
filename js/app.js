@@ -14,19 +14,17 @@ const Store={
 const PROFILE_KEY='nta_profile';
 function getProfile(){return Store.get(PROFILE_KEY,{name:'',photo:''})}
 function profileSetup(force=false){
- const p=getProfile();
- modal(`<div class="setup-modal">
-   <div class="setup-kicker">ONE-TIME CANDIDATE SETUP</div>
-   <h2>Set up your candidate profile</h2>
-   <p class="mut">Your name is saved on this device and reused automatically for every test. Photo is optional.</p>
-   <label class="profile-photo-pick">
-     <span id="photoPreview" class="photo-preview">${p.photo?`<img src="${p.photo}" alt="Candidate photo">`:'<span>PHOTO</span>'}</span>
-     <span><b>Candidate photo</b><small>Optional · JPG/PNG</small></span>
-     <input id="profilePhoto" type="file" accept="image/*" hidden onchange="previewProfilePhoto(this.files[0])">
-   </label>
-   <div class="f"><label>Candidate Name<input id="profileName" maxlength="80" autocomplete="name" value="${esc(p.name)}" placeholder="Enter your name"></label></div>
-   <button class="btn g" onclick="saveProfile()">Save Profile</button>
-   ${p.name?'<button class="btn w" onclick="closeM()">Cancel</button>':''}
+ const u=window.mock1807Auth?.user||null, m=u?.user_metadata||{}, p=getProfile();
+ const name=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'Candidate';
+ const email=u?.email||''; const photo=m.avatar_url||m.picture||p.photo||'';
+ const initials=String(name).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M';
+ modal(`<div class="account-shell">
+   <div class="account-top">
+     ${photo?`<img class="account-avatar" src="${esc(photo)}" alt="Google profile photo">`:`<div class="account-avatar account-avatar-fallback">${esc(initials)}</div>`}
+     <div><div class="account-name">${esc(name)}</div><div class="account-email">${esc(email||'Google account')}</div><span class="account-badge">Google account</span></div>
+   </div>
+   <div class="account-section"><h4>Your account</h4><p>Your name, email and profile photo are taken from the Google account used to sign in. They stay consistent across this device and your test profile.</p><div class="account-actions"><button class="btn g" onclick="closeM();settings()">Open Settings</button><button class="btn w" onclick="closeM()">Done</button></div></div>
+   <div class="account-section"><h4>Candidate identity</h4><p>This is the identity shown beside your results and leaderboard entries.</p><div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:#0d120e"><div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#9cff57;display:grid;place-items:center;color:#071006;font-weight:800">${photo?`<img src="${esc(photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:esc(initials)}</div><div><b style="color:#eef4ee;font-size:13px">${esc(name)}</b><small style="display:block;color:#68736a;margin-top:2px">Synced from Google</small></div></div></div>
  </div>`);
 }
 function previewProfilePhoto(f){
@@ -55,16 +53,17 @@ addEventListener('keydown',e=>{if(!S||S.done)return;if(['INPUT','TEXTAREA'].incl
 function modal(h){$('#dbox').innerHTML=h;$('#dlg').className='modal'+(S?'':' dk');$('#dlg').hidden=false}
 function closeM(){$('#dlg').hidden=true}
 function settings(){
- modal(`<h3>Settings</h3><p class="mut">These settings are configured before a test starts. They are not available inside the exam.</p><div class="f">
- <label>Correct answer score<input id="s1" type="number" min="0" step="0.5" value="${cfg.pos}"></label>
- <label>Negative marking – Section A (MCQ)<input id="s2" type="number" min="0" step="0.5" value="${cfg.negA}"></label>
- <label>Negative marking – Section B (Numerical)<input id="s3" type="number" min="0" step="0.5" value="${cfg.negB}"></label>
- <label>Duration (minutes)<input id="s4" type="number" min="1" value="${cfg.dur}"></label>
- <label>Questions per subject<input id="s5" type="number" min="6" value="${cfg.per}"></label>
- <label>Subject order<select id="s6">${['PCM','MPC','PMC','CPM','CMP','MCP','P','C','M'].map(o=>`<option ${o===cfg.order?'selected':''}>${o}</option>`).join('')}</select></label>
- <hr><b>Data backup</b>
- <div><button class="btn w" onclick="exportJ()">Export data</button> <label class="btn w">Import data<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label></div></div>
- <button class="btn g" onclick="saveCfg()">Save Settings</button> <button class="btn w" onclick="closeM()">Cancel</button>`);
+ modal(`<div class="settings-head"><div class="kicker">CONTROL CENTER · PREFERENCES</div><h2>Settings</h2><p>Configure your test workspace and keep your local data portable.</p></div>
+ <div class="settings-body"><div class="settings-grid">
+  <div class="settings-card"><label>Correct answer score<input id="s1" type="number" min="0" step="0.5" value="${cfg.pos}"></div>
+  <div class="settings-card"><label>Negative marking · MCQ<input id="s2" type="number" min="0" step="0.5" value="${cfg.negA}"></div>
+  <div class="settings-card"><label>Negative marking · Numerical<input id="s3" type="number" min="0" step="0.5" value="${cfg.negB}"></div>
+  <div class="settings-card"><label>Duration · minutes<input id="s4" type="number" min="1" value="${cfg.dur}"></div>
+  <div class="settings-card"><label>Questions per subject<input id="s5" type="number" min="6" value="${cfg.per}"></div>
+  <div class="settings-card"><label>Subject order<select id="s6">${['PCM','MPC','PMC','CPM','CMP','MCP','P','C','M'].map(o=>`<option ${o===cfg.order?'selected':''}>${o}</option>`).join('')}</select></div>
+ </div>
+ <div class="settings-divider"></div><div class="settings-actions"><div class="left"><button class="btn w" onclick="exportJ()">Export data</button><label class="btn w">Import data<input type="file" accept=".json" hidden onchange="importJ(this.files[0])"></label></div><div class="right"><button class="btn w" onclick="closeM()">Cancel</button><button class="btn g" onclick="saveCfg()">Save settings</button></div></div>
+ </div>`);
 }
 function saveCfg(){
  const v=i=>Math.abs(parseFloat($('#s'+i).value))||0;
@@ -392,7 +391,7 @@ function count(el,to,suf){
 function home(){
  const p=getProfile();
  const pb=$('#profileBanner'),profileChipEl=$('#profileChip');
- if(profileChipEl)profileChipEl.innerHTML=p.name?`<span class="profile-chip">${p.photo?`<img src="${p.photo}" alt="">`:''}${esc(p.name)}</span>`:'';
+ if(profileChipEl){const u=window.mock1807Auth?.user,m=u?.user_metadata||{},nm=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'';const ph=m.avatar_url||m.picture||p.photo||'';const ini=esc(String(nm).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M');profileChipEl.innerHTML=nm?`<span class="profile-chip">${ph?`<img src="${esc(ph)}" alt="">`:`<span class="profile-fallback">${ini}</span>`}</span>`:'';}
  if(pb)pb.innerHTML=p.name?`<div class="profile-mini">${p.photo?`<img src="${p.photo}" alt="">`:'<span class="avatar-fallback">N</span>'}<div><b>${esc(p.name)}</b><span>Candidate profile saved · reused automatically in every test</span></div><button class="gbtn" onclick="profileSetup()">Edit</button></div>`:`<div class="profile-mini"><span class="avatar-fallback">?</span><div><b>Set up your candidate profile</b><span>Your name is asked once and reused for every test.</span></div><button class="pbtn" onclick="profileSetup()">Set up</button></div>`;
  const ss=Store.get('nta_sess'),rb=$('#resumeBox');rb.hidden=!(ss&&!ss.done);
  if(!rb.hidden)rb.innerHTML=`<span>⏱ <b>Test in progress:</b> ${esc(ss.type||'Test')} – ${esc(ss.name)}</span><button class="pbtn" onclick="resume()">Resume</button><button class="gbtn" onclick="localStorage.removeItem('nta_sess');home()">Discard</button>`;

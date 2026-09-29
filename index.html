@@ -27,7 +27,7 @@
 <div id="land">
 <nav class="x-nav" id="xNav"><a class="x-brand" href="#top" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></a>
  <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
- <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button></div></nav>
+ <div class="x-act"><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button><span id="profileChip" onclick="profileSetup()" title="Google account"></span></div></nav>
 <main class="x-main" id="top">
 <div class="x-hero"><div class="x-mark" aria-hidden="true">MDCCCVII</div>
  <div class="x-hero-in"><div class="x-copy">
@@ -87,7 +87,7 @@
  <div id="obar"><div class="exam-title"><b>JEE MAIN</b><span id="liveTestName">LIVE TEST</span></div><div id="tabs"></div><div class="exam-progress"><span id="progressText">0 / 75 answered</span><span id="connectionState" class="connection-state">● ONLINE</span><div><i id="progressBar"></i></div></div></div>
  <main>
   <section id="left">
-   <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="reloadPaper()" title="Reload question paper">↻</button><button class="tool-btn" onclick="openPaper()" title="Open question paper in a new tab">↗</button><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>
+   <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>
    <div id="pdf">Loading question paper…</div>
   </section>
   <aside id="right">
