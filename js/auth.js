@@ -23,17 +23,22 @@ window.mock1807Auth = {
 
   const style = document.createElement('style');
   style.textContent = `
-    #authGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b1220;font-family:Inter,system-ui,sans-serif}
+    #authGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;background:#030504;font-family:Inter,system-ui,sans-serif;overflow:hidden}
+    #authGate:before{content:"";position:absolute;inset:-30%;background:radial-gradient(circle at 50% 20%,rgba(114,255,69,.12),transparent 28%),radial-gradient(circle at 15% 80%,rgba(114,255,69,.06),transparent 25%);animation:authDrift 14s ease-in-out infinite alternate;pointer-events:none}
+    @keyframes authDrift{to{transform:translate3d(4%,2%,0) scale(1.08)}}
     #authGate[hidden]{display:none}
-    .auth-card{width:min(440px,100%);padding:40px 36px;border:1px solid #22304d;border-radius:20px;background:#111a2e;box-shadow:0 24px 80px rgba(0,0,0,.45);text-align:center}
-    .auth-logo{width:52px;height:52px;margin:0 auto 22px;display:block}
-    .auth-card h1{margin:0 0 10px;font-size:26px;font-weight:700;letter-spacing:-.02em;color:#fff}
-    .auth-card p{margin:0 auto 26px;color:#8b97b1;line-height:1.6;font-size:14.5px;max-width:340px}
-    .auth-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:10px;background:#fff;color:#1f2430;padding:13px 16px;font:600 15px Inter,system-ui,sans-serif;cursor:pointer;transition:filter .15s}
-    .auth-google:hover:not(:disabled){filter:brightness(.94)}.auth-google:disabled{opacity:.6;cursor:wait}
-    .auth-status{min-height:20px;margin-top:14px;color:#8b97b1;font-size:13px}
-    .auth-legal{margin-top:6px;font-size:12px;color:#66728d;line-height:1.5}.auth-legal a{color:#8fb0ff}
-    .auth-user{margin-top:20px;padding-top:16px;border-top:1px solid #22304d;font-size:12px;color:#66728d}
+    .auth-card{position:relative;width:min(480px,100%);padding:44px 38px;border:1px solid rgba(114,255,69,.2);border-radius:24px;background:linear-gradient(145deg,rgba(10,16,11,.96),rgba(3,6,4,.97));box-shadow:0 30px 120px rgba(0,0,0,.65),0 0 70px rgba(114,255,69,.07);text-align:center;overflow:hidden}
+    .auth-card:after{content:"";position:absolute;left:-20%;right:-20%;height:1px;top:0;background:linear-gradient(90deg,transparent,#72ff45,transparent);animation:authScan 4s linear infinite}
+    @keyframes authScan{to{transform:translateY(460px)}}
+    .auth-logo{width:108px;height:108px;margin:0 auto 24px;display:block;border-radius:50%;object-fit:cover;filter:drop-shadow(0 0 28px rgba(114,255,69,.22));animation:authFloat 5s ease-in-out infinite}
+    @keyframes authFloat{50%{transform:translateY(-7px) rotate(1deg)}}
+    .auth-card h1{margin:0 0 10px;font-size:34px;font-weight:900;letter-spacing:-.05em;color:#f6faf5}
+    .auth-card p{margin:0 auto 28px;color:#849084;line-height:1.7;font-size:14px;max-width:360px}
+    .auth-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid rgba(114,255,69,.22);border-radius:12px;background:#72ff45;color:#031004;padding:14px 16px;font:900 14px Inter,system-ui,sans-serif;cursor:pointer;transition:transform .2s,box-shadow .2s,filter .2s}
+    .auth-google:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 36px rgba(114,255,69,.18);filter:brightness(1.04)}.auth-google:disabled{opacity:.6;cursor:wait}
+    .auth-status{min-height:20px;margin-top:14px;color:#91a18f;font-size:13px}
+    .auth-legal{margin-top:14px;font-size:11px;color:#586257;line-height:1.6}.auth-legal a{color:#9dff85}
+    .auth-user{margin-top:20px;padding-top:16px;border-top:1px solid rgba(114,255,69,.1);font-size:11px;color:#4f594f}
   `;
   document.head.appendChild(style);
 
@@ -41,9 +46,10 @@ window.mock1807Auth = {
   gate.id = 'authGate';
   gate.innerHTML = `
     <div class="auth-card">
-      <img class="auth-logo" src="assets/logo.png" alt="MDCCCVII Tests">
-      <h1>Welcome to MDCCCVII</h1>
-      <p>Sign in to access your scheduled tests, save your attempts and track your performance over time.</p>
+      <img class="auth-logo" src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests">
+      <div style="font-size:10px;letter-spacing:.28em;font-weight:800;color:#72ff45;margin-bottom:8px">MDCCCVII / TESTS</div>
+      <h1>Enter the arena.</h1>
+      <p>Sign in to access scheduled tests, preserve your attempts and see declared results and rankings across the series.</p>
       <button class="auth-google" id="googleLogin"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
       <div class="auth-status" id="authStatus"></div>
       <div class="auth-legal">By continuing you agree to our <a href="legal.html#terms" target="_blank">Terms of Use</a> and <a href="legal.html#privacy" target="_blank">Privacy Policy</a>.</div>
