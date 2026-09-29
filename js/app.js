@@ -353,73 +353,8 @@ addEventListener('keydown',e=>{
  if(S&&!S.done&&!$('#app').hidden&&$('#dlg').hidden&&!e.ctrlKey&&!e.metaKey&&!/^F\d+$/.test(e.key))e.preventDefault();
 },true);
 
-/* ---------- Preloaded GTM schedule ----------
-   Put ALL GTM PDFs directly in /GTM-PDFS using the exact filenames shown below.
-   There is only ONE drop-in folder: GTM-PDFS. The browser locks each test until
-   09:00 local time on its date. Once released, it stays unlocked forever.
-*/
-const GTM_SCHEDULE=[
- {id:'GTM-01',date:'2026-10-03',time:'09:00',qp:'GTM-01_QP.pdf',key:'GTM-01_Final Key.pdf',sol:'GTM-01_Key & Sols.pdf'},
- {id:'GTM-02',date:'2026-10-10',time:'09:00',qp:'GTM-02_QP.pdf',key:'GTM-02_Final Key.pdf',sol:'GTM-02_Key & Sols.pdf'},
- {id:'GTM-03',date:'2026-10-17',time:'09:00',qp:'GTM-03_QP.pdf',key:'GTM-03_Final Key.pdf',sol:'GTM-03_Key & Sols.pdf'},
- {id:'GTM-04',date:'2026-10-24',time:'09:00',qp:'GTM-04_QP.pdf',key:'GTM-04_Final Key.pdf',sol:'GTM-04_Key & Sols.pdf'},
- {id:'GTM-05',date:'2026-10-31',time:'09:00',qp:'GTM-05_QP.pdf',key:'GTM-05_Final Key.pdf',sol:'GTM-05_Key & Sols.pdf'},
- {id:'GTM-06',date:'2026-11-07',time:'09:00',qp:'GTM-06_QP.pdf',key:'GTM-06_Final Key.pdf',sol:'GTM-06_Key & Sols.pdf'},
- {id:'GTM-07',date:'2026-11-14',time:'09:00',qp:'GTM-07_QP.pdf',key:'GTM-07_Final Key.pdf',sol:'GTM-07_Key & Sols.pdf'},
- {id:'GTM-08',date:'2026-11-21',time:'09:00',qp:'GTM-08_QP.pdf',key:'GTM-08_Final Key.pdf',sol:'GTM-08_Key & Sols.pdf'},
- {id:'GTM-09',date:'2026-11-28',time:'09:00',qp:'GTM-09_QP.pdf',key:'GTM-09_Final Key.pdf',sol:'GTM-09_Key & Sols.pdf'}
-];
-const gtmDate=x=>new Date(`${x.date}T${x.time}:00`);
-const gtmReleased=x=>Date.now()>=gtmDate(x).getTime();
-const gtmPath=(x,file)=>`GTM-PDFS/${encodeURIComponent(file).replace(/%2F/g,'/')}`;
-const gtmParts=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/86400000);ms%=86400000;const h=Math.floor(ms/3600000);ms%=3600000;const m=Math.floor(ms/60000);const s=Math.floor(ms/1000)%60;return {d,h,m,s}};
-function gtmFmtDate(x){return gtmDate(x).toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric',weekday:'short'})}
-function gtmNext(){return GTM_SCHEDULE.find(x=>!gtmReleased(x))||null}
-function gtmLaunch(x){
- if(!gtmReleased(x)){alert(`${x.id} opens on ${gtmFmtDate(x)} at 9:00 AM. The paper stays locked until then.`);return}
- const p=getProfile();if(!p.name)return profileSetup(true);
- cfg.per=25;cfg.dur=180;setOrder('PCM');window._t=x.id;
- modal(`<h3>${esc(x.id)} · GTM Full Mock</h3><p class="mut">Released ${esc(gtmFmtDate(x))} at 9:00 AM · Candidate: <b>${esc(p.name)}</b></p><div class="f"><label>Test Name<input id="testName" value="${esc(x.id)}" readonly></label><div class="mut">Question paper is preloaded. No upload is required.</div></div><p><button class="btn g" onclick="startScheduled('${x.id}')">Open ${esc(x.id)}</button> <button class="btn w" onclick="closeM()">Cancel</button></p>`);
-}
-function startScheduled(id){
- const x=GTM_SCHEDULE.find(z=>z.id===id);if(!x||!gtmReleased(x))return;
- const url=gtmPath(x,x.qp);
- fetch(url,{method:'HEAD'}).then(r=>{if(!r.ok)throw new Error('missing');return r}).then(()=>{
-   closeM();
-   S={id:Date.now(),type:x.id,name:getProfile().name,photo:getProfile().photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:25,order:'PCM',scheduledId:x.id,scheduledPdf:url,endAt:Date.now()+180*60000,q:Array.from({length:75},()=>({a:'',s:0,t:0}))};
-   S.q[0].s=1;pdfName=x.qp;pdfUrl=url;begin();
- }).catch(()=>alert(`The ${x.id} PDF is not present yet. Put “${x.qp}” inside the single GTM-PDFS folder and try again.`));
-}
-function renderGtmSchedule(){
- const next=gtmNext(),ne=$('#gtmNext'),list=$('#gtmList');if(!ne||!list)return;
- if(next){const p=gtmParts(gtmDate(next).getTime()-Date.now());ne.innerHTML=`<div class="gtm-next-card"><div class="gtm-kicker">NEXT TEST</div><h3>${next.id} <span class="mut">· ${gtmFmtDate(next)}</span></h3><div class="gtm-status">Paper unlocks automatically at <b>09:00 AM</b> and remains available permanently after release.</div><div class="gtm-count"><div class="gtm-unit"><b>${String(p.d).padStart(2,'0')}</b><span>DAYS</span></div><div class="gtm-unit"><b>${String(p.h).padStart(2,'0')}</b><span>HOURS</span></div><div class="gtm-unit"><b>${String(p.m).padStart(2,'0')}</b><span>MINUTES</span></div><div class="gtm-unit"><b>${String(p.s).padStart(2,'0')}</b><span>SECONDS</span></div></div><button class="gbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(x=>x.id==='${next.id}'))">🔒 View locked test</button></div><div class="gtm-list-card"><div class="gtm-kicker">RELEASE RULE</div><h3 style="margin:6px 0">9:00 AM unlock</h3><p class="mut" style="line-height:1.6">Before release, the PDF cannot be opened. At 09:00, the test becomes available and never locks again.</p></div>`}
- else ne.innerHTML=`<div class="gtm-next-card" style="grid-column:1/-1"><div class="gtm-kicker">SERIES COMPLETE</div><h3>All 9 GTMs are released.</h3><p class="mut">Every scheduled paper remains available permanently.</p></div>`;
- list.innerHTML=GTM_SCHEDULE.map(x=>{const r=gtmReleased(x);return `<article class="gtm-test ${r?'released':'locked'}"><span class="release-badge">${r?'RELEASED':'LOCKED'}</span><div class="gtm-num">${x.id}</div><div class="gtm-date">${gtmFmtDate(x)} · 09:00 AM</div>${r?`<div class="mini-count">Paper available permanently</div><button class="pbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(y=>y.id==='${x.id}'))">Open Test →</button><div class="gtm-files"><a href="${gtmPath(x,x.qp)}" target="_blank">QP</a><a href="${gtmPath(x,x.key)}" target="_blank">Final Key</a><a href="${gtmPath(x,x.sol)}" target="_blank">Key + Sols</a></div>`:`<div class="mini-count">Unlocks at 09:00 AM</div><button class="gbtn" onclick="gtmLaunch(GTM_SCHEDULE.find(y=>y.id==='${x.id}'))">🔒 Locked</button>`}</article>`}).join('');
-}
-let gtmClock=setInterval(()=>{if(!$('#land').hidden)renderGtmSchedule()},1000);
-
+/* ---------- Admin-published tests are rendered by js/backend-tests.js ---------- */
 /* ---------- Landing / History ---------- */
-const TYPES=[
- {n:'Full Mock',d:'Phy + Chem + Maths · 75 Q · 3 hrs',per:25,dur:180},
- {n:'Physics',d:'Single subject · 25 Q · 60 min',per:25,dur:60,o:'P'},
- {n:'Chemistry',d:'Single subject · 25 Q · 60 min',per:25,dur:60,o:'C'},
- {n:'Mathematics',d:'Single subject · 25 Q · 60 min',per:25,dur:60,o:'M'},
- {n:'Custom',d:'Set questions, time & order',custom:1}];
-function pick(t){
- if(t.custom===1){window._cu=1;return settings()}
- cfg.per=t.per;cfg.dur=t.dur;setOrder(t.o||cfg.fo||'PCM');
- window._t=t.n;
- const p=getProfile();
- if(!p.name)return profileSetup(true);
- Promise.race([IDB.get(),new Promise(r=>setTimeout(r,700))]).then(r=>modal(`<h3>${esc(t.n)} Test Setup</h3>
- <p class="mut">Candidate: <b>${esc(p.name)}</b> · ${SUB.join(' · ')} · ${N()} questions · ${cfg.dur} min</p>
- <div class="f">
-  <label>Test Name<input id="testName" maxlength="100" value="${esc(t.n)}" placeholder="e.g. GTM 01"></label>
-  <label>Question Paper (PDF)<input id="lf" type="file" accept="application/pdf"></label>
-  ${r?`<small>Saved in this browser: <b>${esc(r.name)}</b> · upload another file to replace it.</small>`:''}
- </div>
- <p><button class="btn g" onclick="start()">Start Test</button> <button class="btn w" onclick="closeM()">Cancel</button></p>`));
-}
 function openH(id){
  const r=Store.get('nta_hist',[]).find(x=>x.id===id);
  if(!r||!r.s)return alert('This older entry has no stored responses.');
@@ -430,92 +365,11 @@ function count(el,to,suf){
  if(typeof requestAnimationFrame==='undefined'){el.textContent=to+suf;return}
  const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/900);el.textContent=Math.round(to*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)})(t0);
 }
-
-/* ---------- Admin-published tests ---------- */
-let backendTestsCache=[];
-let backendTestsTimer=null;
-function backendDb(){return window.mock1807Auth?.client||null}
-function backendEscape(v){return esc(v||'')}
-function backendFormatDate(v){return v?new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
-function backendParts(ms){ms=Math.max(0,ms);const d=Math.floor(ms/86400000);ms%=86400000;const h=Math.floor(ms/3600000);ms%=3600000;const m=Math.floor(ms/60000);const s=Math.floor(ms/1000)%60;return {d,h,m,s}}
-function backendStatus(t){if(t.enabled===false)return ['DISABLED','disabled'];return new Date(t.release_at)<=new Date()?['RELEASED','released']:['UPCOMING','upcoming']}
-async function loadBackendTests(){
- const root=$('#backendTests'); if(!root)return;
- const db=backendDb();
- if(!db){root.innerHTML='<div class="backend-error">Backend connection is still loading. Refresh once Google sign-in is complete.</div>';return}
- root.innerHTML='<div class="backend-loading">Loading published tests…</div>';
- const {data,error}=await db.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,paper_url,enabled').order('release_at',{ascending:true});
- if(error){root.innerHTML=`<div class="backend-error">Could not load published tests: ${backendEscape(error.message)}</div>`;return}
- backendTestsCache=data||[];
- renderBackendTests();
-}
-function renderBackendTests(){
- const root=$('#backendTests'); if(!root)return;
- if(!backendTestsCache.length){root.innerHTML='<div class="backend-empty"><b>No tests published yet.</b><br>Create a test from the Admin Portal and it will appear here automatically.</div>';return}
- root.innerHTML=backendTestsCache.map(t=>{
-   const [status,cls]=backendStatus(t); const rel=new Date(t.release_at); const released=status==='RELEASED';
-   const cd=rel.getTime()-Date.now(); const p=backendParts(cd);
-   const countdown=released?'AVAILABLE NOW':`${String(p.d).padStart(2,'0')}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`;
-   return `<article class="backend-test-card" data-test-card="${t.id}">
-    <div class="backend-test-top"><div class="backend-test-name">${backendEscape(t.name)}</div><span class="backend-test-pill ${cls}">${status}</span></div>
-    <div class="backend-test-desc">${backendEscape(t.description)||'No description provided.'}</div>
-    <div class="backend-test-meta"><div><small>Release</small><b>${backendFormatDate(t.release_at)}</b></div><div><small>Duration</small><b>${Number(t.duration_minutes)||0} min · ${Number(t.total_questions)||0} Q</b></div></div>
-    <div class="backend-countdown" data-countdown="${t.id}">${countdown}</div>
-    <div class="backend-test-actions">${released&&t.paper_url?'<button class="pbtn" onclick="openBackendTest('+Number(t.id)+')">Open Test →</button>':'<button class="gbtn" disabled>🔒 Opens at release</button>'}</div>
-   </article>`;
- }).join('');
- updateBackendCountdowns();
-}
-function updateBackendCountdowns(){
- backendTestsCache.forEach(t=>{
-   const el=document.querySelector(`[data-countdown="${t.id}"]`); if(!el)return;
-   const rel=new Date(t.release_at).getTime(),ms=rel-Date.now();
-   if(ms<=0){el.textContent='AVAILABLE NOW';const card=document.querySelector(`[data-test-card="${t.id}"]`);if(card){const btn=card.querySelector('.backend-test-actions');if(btn&&t.paper_url&&!btn.querySelector('[data-open-backend]'))btn.innerHTML=`<button class="pbtn" data-open-backend onclick="openBackendTest(${Number(t.id)})">Open Test →</button>`;const pill=card.querySelector('.backend-test-pill');if(pill){pill.textContent=t.enabled===false?'DISABLED':'RELEASED';pill.className='backend-test-pill '+(t.enabled===false?'disabled':'released')}}}
-   else{const p=backendParts(ms);el.textContent=`${String(p.d).padStart(2,'0')}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`}
- });
-}
-async function openBackendTest(id){
- const t=backendTestsCache.find(x=>String(x.id)===String(id)); if(!t)return;
- if(t.enabled===false)return alert('This test has been disabled by the administrator.');
- if(new Date(t.release_at)>new Date())return alert(`This test opens on ${backendFormatDate(t.release_at)}.`);
- const p=getProfile(); if(!p.name)return profileSetup(true);
- if(!t.paper_url)return alert('This test does not have a question paper attached yet.');
- const db=backendDb(); if(!db)return alert('Backend connection is unavailable.');
- try{
-   const {data,error}=await db.storage.from('test-pdfs').createSignedUrl(t.paper_url,3600);
-   if(error)throw error;
-   cfg.per=Math.max(6,Math.ceil(Number(t.total_questions||75)/3));
-   cfg.dur=Number(t.duration_minutes)||180;
-   setOrder('PCM');
-   window._t=t.name;
-   modal(`<h3>${backendEscape(t.name)}</h3><p class="mut">Released ${backendEscape(backendFormatDate(t.release_at))} · ${cfg.dur} minutes · ${Number(t.total_questions||0)} questions</p><div class="f"><label>Test Name<input id="testName" value="${backendEscape(t.name)}" readonly></label><div class="mut">Question paper is securely loaded from the private test storage.</div></div><p><button class="btn g" onclick="startBackendScheduled(${Number(t.id)})">Open ${backendEscape(t.name)}</button> <button class="btn w" onclick="closeM()">Cancel</button></p>`);
-   window.__backendSignedUrls=window.__backendSignedUrls||{};window.__backendSignedUrls[t.id]=data.signedUrl;
- }catch(e){alert('Could not open the question paper: '+(e.message||String(e)))}
-}
-async function startBackendScheduled(id){
- const t=backendTestsCache.find(x=>String(x.id)===String(id)); if(!t)return;
- const url=window.__backendSignedUrls?.[t.id]; if(!url)return alert('Secure paper link expired. Close this window and open the test again.');
- const p=getProfile();
- closeM();
- cfg.per=Math.max(6,Math.ceil(Number(t.total_questions||75)/3));cfg.dur=Number(t.duration_minutes)||180;setOrder('PCM');
- S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,backendPdfPath:t.paper_url,scheduledPdf:url,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:N()},()=>({a:'',s:0,t:0}))};
- S.q[0].s=1;pdfName=t.name+' · Question Paper';pdfUrl=url;begin();
-}
-window.openBackendTest=openBackendTest;window.startBackendScheduled=startBackendScheduled;
-function initBackendTests(){
- const btn=$('#refreshBackendTests'); if(btn)btn.addEventListener('click',loadBackendTests);
- if(backendTestsTimer)clearInterval(backendTestsTimer);backendTestsTimer=setInterval(updateBackendCountdowns,1000);
- setTimeout(loadBackendTests,250);
-}
-
 function home(){
  const p=getProfile();
  const pb=$('#profileBanner'),profileChipEl=$('#profileChip');
  if(profileChipEl)profileChipEl.innerHTML=p.name?`<span class="profile-chip">${p.photo?`<img src="${p.photo}" alt="">`:''}${esc(p.name)}</span>`:'';
  if(pb)pb.innerHTML=p.name?`<div class="profile-mini">${p.photo?`<img src="${p.photo}" alt="">`:'<span class="avatar-fallback">N</span>'}<div><b>${esc(p.name)}</b><span>Candidate profile saved · reused automatically in every test</span></div><button class="gbtn" onclick="profileSetup()">Edit</button></div>`:`<div class="profile-mini"><span class="avatar-fallback">?</span><div><b>Set up your candidate profile</b><span>Your name is asked once and reused for every test.</span></div><button class="pbtn" onclick="profileSetup()">Set up</button></div>`;
- renderGtmSchedule();
- const BD=['FULL','PHY','CHEM','MATH','⚙'],HU=[228,200,150,28,320];
- $('#types').innerHTML=TYPES.map((t,i)=>`<button class="tcard rv" style="--i:${i+2};--h:${HU[i]}" onclick="pick(TYPES[${i}])"><em class="bd">${BD[i]}</em><b>${t.n}</b><span>${t.d}</span><i class="go">Start →</i></button>`).join('');
  const ss=Store.get('nta_sess'),rb=$('#resumeBox');rb.hidden=!(ss&&!ss.done);
  if(!rb.hidden)rb.innerHTML=`<span>⏱ <b>Test in progress:</b> ${esc(ss.type||'Test')} – ${esc(ss.name)}</span><button class="pbtn" onclick="resume()">Resume</button><button class="gbtn" onclick="localStorage.removeItem('nta_sess');home()">Discard</button>`;
  const h=Store.get('nta_hist',[]),pc=x=>Math.max(0,Math.round(x.score/x.max*100)),SJ={};
@@ -544,7 +398,7 @@ function home(){
   return `<div class="gl trow rv" style="--i:${i+1}"><div class="ring" style="--p:${p}"><b>${p}%</b></div>
   <div class="tm"><b>${esc(x.type||'Test')}</b> <span class="mut">· ${esc(x.name)} · ${esc(x.date)}</span><div>${x.subs.map(u=>`<span class="chip">${u.n.slice(0,3)} ${u.m}</span>`).join('')}</div></div>
   <div class="sc">${x.score}/${x.max}${d===null?'':`<small class="${d>=0?'up':'dn'}">${d>=0?'▲':'▼'} ${Math.abs(d)}</small>`}</div>
-  <div><button class="gbtn" onclick="openH(${x.id})">Analysis →</button> <button class="xb" title="Delete" onclick="delH(${x.id})">✕</button></div></div>`}).join(''):'<div class="empty">No tests yet – start one above.</div>';
+  <div><button class="gbtn" onclick="openH(${x.id})">Analysis →</button> <button class="xb" title="Delete" onclick="delH(${x.id})">✕</button></div></div>`}).join(''):'<div class="empty">No tests yet – create one from the Admin Portal.</div>';
  document.querySelectorAll('[data-c]').forEach(el=>count(el,+el.dataset.c,el.dataset.s));
  IDB.get().then(r=>{$('#paperInfo').innerHTML=r?`Saved paper: <b>${esc(r.name)}</b> · <a href="#" onclick="IDB.del().then(home);return false" style="color:#9db3ff">remove</a>`:''});
 }
