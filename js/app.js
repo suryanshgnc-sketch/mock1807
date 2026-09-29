@@ -93,10 +93,16 @@ function manualAll(v){S.man=S.man||[];S.q.forEach((q,i)=>{if(q.a!=='')S.man[i]=v
 function jumpResult(i){const el=document.getElementById('resp-'+i);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
 function loadPdf(f){if(!f)return;IDB.set({blob:f,name:f.name});if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl=URL.createObjectURL(f);pdfName=f.name;pdfView()}
 function pdfView(){
- if(!pdfUrl)return;$('#zl').textContent=pdfZoom+'%';
- $('#pdf').innerHTML=`<embed type="application/pdf" src="${pdfUrl}#page=${$('#pg').value||1}&zoom=${pdfZoom}">`;
+ if(!pdfUrl)return;
+ const page=Math.max(1,Number($('#pg')?.value||1));
+ $('#zl').textContent=pdfZoom+'%';
+ const pn=$('#paperName');if(pn)pn.textContent=pdfName||'Question Paper';
+ $('#pdf').innerHTML=`<embed class="pdf-frame" type="application/pdf" src="${pdfUrl}#page=${page}&zoom=${pdfZoom}" aria-label="Question paper">`;
 }
-function zoom(d){pdfZoom=Math.min(300,Math.max(50,pdfZoom+d));$('#zl').textContent=pdfZoom+'%';pdfView()}
+function zoom(d){pdfZoom=Math.min(300,Math.max(50,pdfZoom+d));pdfView()}
+function fitPaper(){pdfZoom=100;pdfView()}
+function openPaper(){if(!pdfUrl)return alert('Question paper is not loaded yet.');window.open(pdfUrl,'_blank','noopener')}
+
 
 /* ---------- Test lifecycle ---------- */
 function start(){
@@ -124,13 +130,16 @@ function begin(){
  try{document.documentElement.requestFullscreen()}catch(e){}
 }
 function tick(){
- const rem=Math.round((S.endAt-Date.now())/1000),t=$('#timer');
- t.textContent=fmt(rem);t.className=rem<300?'rd':rem<1800?'or':'';
- S.q[S.cur].t++;
+ if(!S||S.done)return;
+ const rem=Math.max(0,Math.round((S.endAt-Date.now())/1000)),t=$('#timer');
+ if(t){t.textContent=fmt(rem);t.className=rem<300?'rd':rem<1800?'or':'';}
+ S.rem=rem;
+ if(S.q[S.cur])S.q[S.cur].t++;
+ if(rem%5===0)saveSess();
  if(rem<=0){finish()}
 }
 function go(i){
- const q=S.q[S.cur];if(q.a!==''&&q.s<2)q.s=2;
+ const q=S.q[S.cur];if(q.a!==''&&q.s<2)q.s=2;saveSess();
  S.cur=i;if(S.q[i].s===0)S.q[i].s=1;render();
 }
 function act(a){
@@ -140,26 +149,39 @@ function act(a){
  if(S.cur<N()-1)go(S.cur+1);else render();
 }
 function nav(d){const i=S.cur+d;if(i>=0&&i<N())go(i)}
-function setAns(v){S.q[S.cur].a=v;if(S.q[S.cur].s<2)S.q[S.cur].s=2;renderPal()}
+function setAns(v){S.q[S.cur].a=v;if(S.q[S.cur].s<2)S.q[S.cur].s=2;saveSess();renderPal();updateResponseState()}
 
 /* ---------- Renderers ---------- */
 function render(){
- const i=S.cur,q=S.q[i],s=sub(i),per=cfg.per,nA=per-5;
+ const i=S.cur,q=S.q[i],s=sub(i),per=cfg.per,nA=per-5,answered=S.q.filter(x=>x.a!=='').length;
  $('#tabs').innerHTML=SUB.map((n,k)=>`<button class="tab ${k===s?'on':''}" onclick="go(${k*per})">${n}</button>`).join('');
- $('#badge').textContent=isNum(i)?`Section B (Numerical ${nA+1}–${per})`:`Section A (MCQ 1–${nA})`;
- $('#sn').textContent=SUB[s];$('#qh').innerHTML='Question No. '+(i%per+1)+`<span style="float:right;font-size:12px">Marks: +${cfg.pos} / -${isNum(i)?cfg.negB:cfg.negA}</span>`;
+ $('#badge').textContent=isNum(i)?`SECTION B · NUMERICAL ${nA+1}–${per}`:`SECTION A · MCQ 1–${nA}`;
+ $('#sn').textContent=SUB[s];
+ const local=i%per+1,total=N();
+ const qh=$('#qh');if(qh)qh.textContent=`Question No. ${local}`;
+ const qc=$('#qCounter');if(qc)qc.textContent=String(local).padStart(2,'0');
+ const qt=$('#qTotal');if(qt)qt.textContent=total;
+ const pt=$('#progressText');if(pt)pt.textContent=`${answered} / ${total} answered`;
+ const pb=$('#progressBar');if(pb)pb.style.width=(answered/Math.max(1,total)*100)+'%';
+ const lt=$('#liveTestName');if(lt)lt.textContent=S.type||'LIVE TEST';
+ const pn=$('#paperName');if(pn)pn.textContent=pdfName||'Question Paper';
  if(isNum(i)){
-  $('#qbody').innerHTML=`<div class="nta-num-wrap">
-    <div class="num-label">Enter your answer</div>
-    <input id="ans" class="nta-num-input" value="${esc(q.a)}" inputmode="decimal" autocomplete="off" aria-label="Numerical answer" placeholder="Type answer">
-    <div class="nta-keypad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button type="button" onclick="key('${k==='⌫'?'B':k}')">${k}</button>`).join('')}<button type="button" class="clear-key" onclick="key('C')">Clear</button></div>
-    <div class="num-hint">Numerical answer · use digits and decimal point as required by the paper.</div>
+  $('#qbody').innerHTML=`<div class="response-prompt"><strong>Numerical response</strong><br>Enter the value exactly as required by the question paper. Use the keypad or your keyboard.</div><div class="nta-num-wrap">
+    <div class="num-label">Your answer</div>
+    <input id="ans" class="nta-num-input" value="${esc(q.a)}" inputmode="decimal" autocomplete="off" aria-label="Numerical answer" placeholder="Enter numerical value">
+    <div class="nta-keypad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button type="button" onclick="key('${k==='⌫'?'B':k}')">${k}</button>`).join('')}<button type="button" class="clear-key" onclick="key('C')">Clear response</button></div>
+    <div class="response-note">Marking: +${cfg.pos} for correct · −${cfg.negB} for incorrect.</div>
   </div>`;
   const ai=$('#ans');ai.oninput=()=>{const v=ai.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1').slice(0,12);ai.value=v;setAns(v)};
  }else{
-  $('#qbody').innerHTML=[1,2,3,4].map(o=>`<label class="opt"><input type="radio" name="o" ${q.a==o?'checked':''} onchange="setAns('${o}')"> <b>${'ABCD'[o-1]}.</b> Option (${o})</label>`).join('');
+  $('#qbody').innerHTML=`<div class="response-prompt"><strong>Choose one answer.</strong><br>Use the question paper on the left to read the question and options.</div><div class="mcq-grid">${['A','B','C','D'].map((letter,idx)=>{const v=idx+1;return `<button type="button" class="mcq-btn ${q.a==v?'selected':''}" onclick="setAns('${v}')"><span class="mcq-letter">${letter}</span> ${q.a==v?'Selected':'Select option '+letter}</button>`}).join('')}</div><div class="response-note">Marking: +${cfg.pos} for correct · −${cfg.negA} for incorrect.</div>`;
  }
  renderPal();
+}
+function updateResponseState(){
+ const q=S?.q?.[S.cur];if(!q)return;
+ const btns=document.querySelectorAll('.mcq-btn');btns.forEach((b,i)=>{const selected=q.a===String(i+1);b.classList.toggle('selected',selected);b.querySelector('.mcq-letter')?.classList.toggle('selected',selected);b.lastChild.textContent=selected?'Selected':'Select option '+['A','B','C','D'][i]});
+ const pt=$('#progressText');if(pt)pt.textContent=`${S.q.filter(x=>x.a!=='').length} / ${N()} answered`;const pb=$('#progressBar');if(pb)pb.style.width=(S.q.filter(x=>x.a!=='').length/Math.max(1,N())*100)+'%';
 }
 function key(k){
  const q=S.q[S.cur];let v=q.a||'';

@@ -5,7 +5,7 @@
   const SUPABASE_KEY='sb_publishable_aiJYxr3AYoeZHBXwIoXaaQ_gIfHxV2s';
   const BUCKET='test-pdfs';
   const $=s=>document.querySelector(s);
-  let sb=null, tests=[], activeAttemptId=null, finishing=false;
+  let sb=null, tests=[], activeAttemptId=null, finishing=false, syncTimer=null;
 
   function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function parts(ms){ms=Math.max(0,ms);return {d:Math.floor(ms/86400000),h:Math.floor(ms%86400000/3600000),m:Math.floor(ms%3600000/60000),s:Math.floor(ms%60000/1000)}}
@@ -55,6 +55,10 @@
     const t=tests.find(x=>Number(x.id)===Number(id));if(!t)return;
     if(!released(t)){render();return alert(`This test opens at ${fmtDate(t.release_at)}.`)}
     const p=getProfile();if(!p.name){profileSetup(true);return}
+    try{
+      const {data:blocked,error:be}=await sb.rpc('is_current_user_blocked');
+      if(!be && blocked===true){alert('Your student account is currently blocked by the administrator. You cannot start a new test.');return;}
+    }catch(e){console.warn('Block status check unavailable:',e.message)}
     if(!t.paper_url)return alert('The question paper for this test is not available yet. Please check back shortly.');
     try{
       const {data:sign,error}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
@@ -75,19 +79,39 @@
     try{
       const {data:{session}}=await sb.auth.getSession();if(!session)return;
       const {data,error}=await sb.from('attempts').insert({user_id:session.user.id,test_id:t.id,status:'in_progress',max_score:Number(t.total_marks)||((Number(t.total_questions)||0)*Number(t.positive_marks??4))}).select('id').single();
-      if(error)throw error;activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();
+      if(error)throw error;activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();startAttemptAutosave();
     }catch(e){console.warn('Attempt could not be created:',e.message)}
   }
+  async function syncAttempt(){
+    if(!S?.backendAttemptId||S.done||!sb)return;
+    try{
+      const answers=S.q.map((q,i)=>({attempt_id:S.backendAttemptId,question_no:i+1,response:q.a||null,marked_for_review:q.s>=3,answered_at:q.a?new Date().toISOString():null}));
+      const {error}=await sb.from('answers').upsert(answers,{onConflict:'attempt_id,question_no'});
+      if(error)throw error;
+      saveSess();
+    }catch(e){console.warn('Autosave failed:',e.message)}
+  }
+  function startAttemptAutosave(){
+    clearInterval(syncTimer);syncTimer=setInterval(()=>syncAttempt(),10000);
+    window.addEventListener('beforeunload',()=>{try{navigator.sendBeacon?.('', '')}catch(e){}} ,{once:false});
+  }
+
   async function finalizeAttempt(){
     if(!S?.backendAttemptId)return;
+    clearInterval(syncTimer);
     const answers=S.q.map((q,i)=>({attempt_id:S.backendAttemptId,question_no:i+1,response:q.a||null,marked_for_review:q.s>=3,answered_at:q.a?new Date().toISOString():null}));
     try{
-      const {error:ae}=await sb.from('answers').upsert(answers,{onConflict:'attempt_id,question_no'});if(ae)throw ae;
+      let ae=null;
+      for(let attempt=0;attempt<3;attempt++){
+        const r=await sb.from('answers').upsert(answers,{onConflict:'attempt_id,question_no'});ae=r.error;if(!ae)break;
+        await new Promise(r=>setTimeout(r,350*(attempt+1)));
+      }
+      if(ae)throw ae;
       const attempted=S.q.filter(q=>q.a!=='').length;
       const elapsed=Math.max(0,Math.round((cfg.dur*60000-(S.rem||0)*1000)/1000));
       const {error:ue}=await sb.from('attempts').update({status:'submitted',submitted_at:new Date().toISOString(),unanswered_count:S.q.length-attempted,time_taken_seconds:elapsed}).eq('id',S.backendAttemptId);
       if(ue)throw ue;
-    }catch(e){console.warn('Could not save submitted attempt:',e.message)}
+    }catch(e){console.warn('Could not save submitted attempt:',e.message);alert('Your answers are saved on this device, but the server could not confirm the submission. Keep this page open and contact the administrator before closing it.')}
   }
   function patchFinish(){
     if(window.__backendFinishPatched)return;

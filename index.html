@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/polished.css">
 <link rel="stylesheet" href="css/pro-final.css">
 <link rel="stylesheet" href="css/brand.css">
+<link rel="stylesheet" href="css/cbt-pro.css">
 </head><body>
 <canvas id="mdfx" aria-hidden="true"></canvas>
 <div class="md-cursor" aria-hidden="true"></div><div class="md-cursor md-cursor-2" aria-hidden="true"></div>
@@ -83,18 +84,18 @@
 <div id="app" hidden>
  <header><div class="logo"><img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests"><div><b>MDCCCVII TESTS</b><i>Independent JEE practice platform</i></div></div>
   <div class="cand"><div class="av"><img id="candidatePhoto" alt="Candidate"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span></div></div></header>
- <div id="obar"><b>JEE MAIN</b><div id="tabs"></div></div>
+ <div id="obar"><div class="exam-title"><b>JEE MAIN</b><span id="liveTestName">LIVE TEST</span></div><div id="tabs"></div><div class="exam-progress"><span id="progressText">0 / 75 answered</span><div><i id="progressBar"></i></div></div></div>
  <main>
   <section id="left">
-   <div id="bar"><button class="btn w" onclick="zoom(-25)">−</button><span id="zl">100%</span><button class="btn w" onclick="zoom(25)">+</button>
-    Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></div>
+   <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>
    <div id="pdf">Loading question paper…</div>
   </section>
   <aside id="right">
-   <div class="badge" id="badge"></div>
+   <div class="response-head"><div><span class="eyebrow">RESPONSE PANEL</span><div class="badge" id="badge"></div><h2 id="qh">Question No. 1</h2></div><div class="question-counter"><b id="qCounter">01</b><span>/ <i id="qTotal">75</i></span></div></div>
    <div class="leg" id="leg"></div>
+   <div class="palette-head"><b>Question Palette</b><span id="paletteHint">Click a number to jump</span></div>
    <div id="grid"></div>
-   <div class="qa"><h3 id="qh" style="margin-top:0"></h3><div id="qbody"></div></div>
+   <div class="qa"><div id="qbody"></div></div>
    <div class="acts">
     <button class="btn g" onclick="act('sn')">Save &amp; Next</button>
     <button class="btn o" onclick="act('sm')">Save &amp; Mark for Review</button>
