@@ -17,6 +17,7 @@
   <div id="resumeBox" class="gl" hidden></div>
   <div class="stats" id="stats"></div>
   <section class="gtm-section"><div class="gtm-hero"><div class="gtm-kicker">GTM TEST SERIES · SCHEDULED RELEASE</div><div class="gtm-next" id="gtmNext"></div><div class="gtm-list" id="gtmList"></div></div></section>
+  <section class="backend-tests-section" id="backendTestsSection"><div class="backend-tests-head"><div><div class="gtm-kicker">LIVE TEST PORTAL</div><h2 style="margin:6px 0 4px;color:#fff;letter-spacing:-.3px;text-transform:none;font-size:24px">Tests published from Admin</h2><p class="mut" style="margin:0">Tests created in the admin portal appear here automatically with their release countdown.</p></div><button class="gbtn" id="refreshBackendTests">↻ Refresh</button></div><div id="backendTests" class="backend-tests-grid"><div class="backend-loading">Loading published tests…</div></div></section>
   <h2>Start a test</h2><div class="types" id="types"></div>
   <h2>Performance analysis</h2><div class="anl" id="anl"></div>
   <h2>Previous tests</h2><div id="hist"></div>
@@ -55,6 +56,8 @@
 <div id="res" hidden></div>
 <div id="dlg" class="modal" hidden><div class="box" id="dbox"></div></div>
 <div id="report"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/app.js"></script>
 <script src="js/analysis.js"></script>
+<script src="js/auth.js"></script>
 </body></html>

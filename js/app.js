@@ -430,6 +430,84 @@ function count(el,to,suf){
  if(typeof requestAnimationFrame==='undefined'){el.textContent=to+suf;return}
  const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/900);el.textContent=Math.round(to*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)})(t0);
 }
+
+/* ---------- Admin-published tests ---------- */
+let backendTestsCache=[];
+let backendTestsTimer=null;
+function backendDb(){return window.mock1807Auth?.client||null}
+function backendEscape(v){return esc(v||'')}
+function backendFormatDate(v){return v?new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
+function backendParts(ms){ms=Math.max(0,ms);const d=Math.floor(ms/86400000);ms%=86400000;const h=Math.floor(ms/3600000);ms%=3600000;const m=Math.floor(ms/60000);const s=Math.floor(ms/1000)%60;return {d,h,m,s}}
+function backendStatus(t){if(t.enabled===false)return ['DISABLED','disabled'];return new Date(t.release_at)<=new Date()?['RELEASED','released']:['UPCOMING','upcoming']}
+async function loadBackendTests(){
+ const root=$('#backendTests'); if(!root)return;
+ const db=backendDb();
+ if(!db){root.innerHTML='<div class="backend-error">Backend connection is still loading. Refresh once Google sign-in is complete.</div>';return}
+ root.innerHTML='<div class="backend-loading">Loading published tests…</div>';
+ const {data,error}=await db.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,paper_url,enabled').order('release_at',{ascending:true});
+ if(error){root.innerHTML=`<div class="backend-error">Could not load published tests: ${backendEscape(error.message)}</div>`;return}
+ backendTestsCache=data||[];
+ renderBackendTests();
+}
+function renderBackendTests(){
+ const root=$('#backendTests'); if(!root)return;
+ if(!backendTestsCache.length){root.innerHTML='<div class="backend-empty"><b>No tests published yet.</b><br>Create a test from the Admin Portal and it will appear here automatically.</div>';return}
+ root.innerHTML=backendTestsCache.map(t=>{
+   const [status,cls]=backendStatus(t); const rel=new Date(t.release_at); const released=status==='RELEASED';
+   const cd=rel.getTime()-Date.now(); const p=backendParts(cd);
+   const countdown=released?'AVAILABLE NOW':`${String(p.d).padStart(2,'0')}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`;
+   return `<article class="backend-test-card" data-test-card="${t.id}">
+    <div class="backend-test-top"><div class="backend-test-name">${backendEscape(t.name)}</div><span class="backend-test-pill ${cls}">${status}</span></div>
+    <div class="backend-test-desc">${backendEscape(t.description)||'No description provided.'}</div>
+    <div class="backend-test-meta"><div><small>Release</small><b>${backendFormatDate(t.release_at)}</b></div><div><small>Duration</small><b>${Number(t.duration_minutes)||0} min · ${Number(t.total_questions)||0} Q</b></div></div>
+    <div class="backend-countdown" data-countdown="${t.id}">${countdown}</div>
+    <div class="backend-test-actions">${released&&t.paper_url?'<button class="pbtn" onclick="openBackendTest('+Number(t.id)+')">Open Test →</button>':'<button class="gbtn" disabled>🔒 Opens at release</button>'}</div>
+   </article>`;
+ }).join('');
+ updateBackendCountdowns();
+}
+function updateBackendCountdowns(){
+ backendTestsCache.forEach(t=>{
+   const el=document.querySelector(`[data-countdown="${t.id}"]`); if(!el)return;
+   const rel=new Date(t.release_at).getTime(),ms=rel-Date.now();
+   if(ms<=0){el.textContent='AVAILABLE NOW';const card=document.querySelector(`[data-test-card="${t.id}"]`);if(card){const btn=card.querySelector('.backend-test-actions');if(btn&&t.paper_url&&!btn.querySelector('[data-open-backend]'))btn.innerHTML=`<button class="pbtn" data-open-backend onclick="openBackendTest(${Number(t.id)})">Open Test →</button>`;const pill=card.querySelector('.backend-test-pill');if(pill){pill.textContent=t.enabled===false?'DISABLED':'RELEASED';pill.className='backend-test-pill '+(t.enabled===false?'disabled':'released')}}}
+   else{const p=backendParts(ms);el.textContent=`${String(p.d).padStart(2,'0')}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`}
+ });
+}
+async function openBackendTest(id){
+ const t=backendTestsCache.find(x=>String(x.id)===String(id)); if(!t)return;
+ if(t.enabled===false)return alert('This test has been disabled by the administrator.');
+ if(new Date(t.release_at)>new Date())return alert(`This test opens on ${backendFormatDate(t.release_at)}.`);
+ const p=getProfile(); if(!p.name)return profileSetup(true);
+ if(!t.paper_url)return alert('This test does not have a question paper attached yet.');
+ const db=backendDb(); if(!db)return alert('Backend connection is unavailable.');
+ try{
+   const {data,error}=await db.storage.from('test-pdfs').createSignedUrl(t.paper_url,3600);
+   if(error)throw error;
+   cfg.per=Math.max(6,Math.ceil(Number(t.total_questions||75)/3));
+   cfg.dur=Number(t.duration_minutes)||180;
+   setOrder('PCM');
+   window._t=t.name;
+   modal(`<h3>${backendEscape(t.name)}</h3><p class="mut">Released ${backendEscape(backendFormatDate(t.release_at))} · ${cfg.dur} minutes · ${Number(t.total_questions||0)} questions</p><div class="f"><label>Test Name<input id="testName" value="${backendEscape(t.name)}" readonly></label><div class="mut">Question paper is securely loaded from the private test storage.</div></div><p><button class="btn g" onclick="startBackendScheduled(${Number(t.id)})">Open ${backendEscape(t.name)}</button> <button class="btn w" onclick="closeM()">Cancel</button></p>`);
+   window.__backendSignedUrls=window.__backendSignedUrls||{};window.__backendSignedUrls[t.id]=data.signedUrl;
+ }catch(e){alert('Could not open the question paper: '+(e.message||String(e)))}
+}
+async function startBackendScheduled(id){
+ const t=backendTestsCache.find(x=>String(x.id)===String(id)); if(!t)return;
+ const url=window.__backendSignedUrls?.[t.id]; if(!url)return alert('Secure paper link expired. Close this window and open the test again.');
+ const p=getProfile();
+ closeM();
+ cfg.per=Math.max(6,Math.ceil(Number(t.total_questions||75)/3));cfg.dur=Number(t.duration_minutes)||180;setOrder('PCM');
+ S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,backendPdfPath:t.paper_url,scheduledPdf:url,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:N()},()=>({a:'',s:0,t:0}))};
+ S.q[0].s=1;pdfName=t.name+' · Question Paper';pdfUrl=url;begin();
+}
+window.openBackendTest=openBackendTest;window.startBackendScheduled=startBackendScheduled;
+function initBackendTests(){
+ const btn=$('#refreshBackendTests'); if(btn)btn.addEventListener('click',loadBackendTests);
+ if(backendTestsTimer)clearInterval(backendTestsTimer);backendTestsTimer=setInterval(updateBackendCountdowns,1000);
+ setTimeout(loadBackendTests,250);
+}
+
 function home(){
  const p=getProfile();
  const pb=$('#profileBanner'),profileChipEl=$('#profileChip');
