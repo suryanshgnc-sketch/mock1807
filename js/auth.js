@@ -79,13 +79,21 @@ window.mock1807Auth = {
     }
   });
 
-  function applyUser(user){
+  async function applyUser(user){
     window.mock1807Auth.user = user || null;
-    if(!user){
-      gate.hidden = false;
-      return;
-    }
-
+    if(!user){ gate.hidden = false; return; }
+    try {
+      const {data:blocked,error:blockError}=await sb.rpc('is_current_user_blocked');
+      if(blockError) console.warn('Could not check account status:',blockError.message);
+      if(blocked===true){
+        gate.hidden=false;
+        status.textContent='This account has been blocked by an administrator.';
+        login.disabled=true;
+        await sb.auth.signOut();
+        return;
+      }
+    } catch(e){ console.warn('Account status check failed:',e); }
+    login.disabled=false;
     gate.hidden = true;
 
     // Reuse Google name/photo for the existing one-time candidate profile.
@@ -108,9 +116,7 @@ window.mock1807Auth = {
     }
   }
 
-  sb.auth.onAuthStateChange((_event, session)=>{
-    applyUser(session?.user || null);
-  });
+  sb.auth.onAuthStateChange((_event, session)=>{ applyUser(session?.user || null); });
 
   sb.auth.getSession().then(({data})=>{
     applyUser(data?.session?.user || null);

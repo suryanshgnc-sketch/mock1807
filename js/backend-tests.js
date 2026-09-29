@@ -116,8 +116,16 @@
     const rb=$('#refreshBackendTests');if(rb)rb.addEventListener('click',refresh);
     sb.auth.onAuthStateChange(()=>setTimeout(refresh,0));
     patchFinish();
-    load();startClock();
+    load().then(updateHomeDeck).catch(()=>{});startClock();
   }
+  function updateHomeDeck(){
+    const next=(tests||[]).filter(t=>t.enabled!==false && new Date(t.release_at)>new Date()).sort((a,b)=>new Date(a.release_at)-new Date(b.release_at))[0];
+    const n=document.getElementById('deckNext'),m=document.getElementById('deckNextMeta');
+    if(n){n.textContent=next?next.name:'No upcoming test';m.textContent=next?`${new Date(next.release_at).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})} · ${next.duration_minutes} min`:'Create/schedule one from Admin';}
+    const u=window.mock1807Auth?.user,st=document.getElementById('deckStudent'),sm=document.getElementById('deckStudentMeta');
+    if(st){st.textContent=u?.user_metadata?.full_name||u?.user_metadata?.name||'Signed in';sm.textContent=u?.email?'Synced to '+u.email:'Your attempts stay synced';}
+  }
+
   window.refreshBackendTests=load;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

@@ -6,6 +6,8 @@
 <meta property="og:type" content="website"><meta property="og:title" content="MDCCCVII Tests · Compete under real exam conditions"><meta property="og:description" content="Scheduled full-length JEE mock tests, exam-grade interface, verified results and live rankings."><meta property="og:image" content="assets/mdcccvii-logo.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:title" content="MDCCCVII Tests"><meta name="twitter:description" content="Scheduled JEE mock tests with live rankings.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/mdcccvii-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -23,7 +25,7 @@
 <div id="land">
 <nav class="x-nav" id="xNav"><a class="x-brand" href="#top" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></a>
  <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
- <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button></div></nav>
+ <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" hidden>Install app</button></div></nav>
 <main class="x-main" id="top">
 <div class="x-hero"><div class="x-mark" aria-hidden="true">MDCCCVII</div>
  <div class="x-hero-in"><div class="x-copy">
@@ -42,6 +44,10 @@
  </div></div>
 <div class="x-marq" aria-hidden="true"><div><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i></div></div>
 <div id="resumeBox" class="gl" hidden></div>
+<div id="homeCommandDeck" class="home-command-deck rv">
+  <div class="deck-main"><div class="deck-kicker">YOUR COMMAND DECK</div><h2>Everything you need before the clock starts.</h2><p id="deckSub">Your next scheduled test, recent activity and quick controls — in one place.</p><div class="deck-actions"><a class="x-btn solid" href="#tests">Browse tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><button class="x-btn ghost" id="deckInstall" hidden>Install MDCCCVII</button></div></div>
+  <div class="deck-stats"><div><span>NEXT TEST</span><b id="deckNext">Loading…</b><small id="deckNextMeta">Checking schedule</small></div><div><span>ACCOUNT</span><b id="deckStudent">Signed in</b><small id="deckStudentMeta">Your attempts stay synced</small></div><div><span>MODE</span><b>EXAM</b><small>Timed · ranked · tracked</small></div></div>
+</div>
 <section class="x-sec rv" id="backendTestsSection"><a id="tests"></a><div class="x-head"><div><div class="x-k"><b>I</b><span>Tests</span></div><h2>Upcoming tests</h2><p>Every test unlocks at its scheduled time, the same for everyone.</p></div><button class="x-btn ghost" id="refreshBackendTests">Refresh</button></div>
  <div id="backendTests" class="bt-grid"><div class="bt-empty">Loading tests…</div></div></section>
 <section class="x-sec rv" id="method"><div class="x-head"><div><div class="x-k"><b>II</b><span>Method</span></div><h2>Four steps to a rank</h2><p>No setup, no downloads. Just the exam.</p></div></div>
@@ -113,4 +119,7 @@
 <script src="js/pro-fx.js"></script>
 <script src="js/brand.js"></script>
 <noscript><p style="position:fixed;bottom:0;left:0;right:0;padding:12px;text-align:center;background:#86ff3f;color:#061006;font:700 13px Inter,sans-serif">JavaScript is required to take tests on MDCCCVII.</p></noscript>
+<script>
+(()=>{let d=null;const btn=document.getElementById('installAppBtn'),deck=document.getElementById('deckInstall');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();d=e;[btn,deck].forEach(x=>{if(x)x.hidden=false});});async function go(){if(!d){alert('On Chrome/Edge, open the browser menu and choose “Install MDCCCVII Tests” or “Add to Home screen”.');return} d.prompt();await d.userChoice;d=null;[btn,deck].forEach(x=>{if(x)x.hidden=true});} [btn,deck].forEach(x=>x&&x.addEventListener('click',go));window.addEventListener('appinstalled',()=>{[btn,deck].forEach(x=>{if(x)x.hidden=true});});if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);})();
+</script>
 </body></html>
