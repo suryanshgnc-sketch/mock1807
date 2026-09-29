@@ -29,7 +29,7 @@
     draw(data||[]);
   }
   async function loadTests(){
-    const {data}=await sb.from('tests').select('id,name,release_at').eq('enabled',true).order('release_at',{ascending:false});
+    const {data}=await sb.from('tests').select('id,name,release_at,leaderboard_enabled').eq('enabled',true).eq('leaderboard_enabled',true).order('release_at',{ascending:false});
     tests=(data||[]).filter(t=>new Date(t.release_at)<=Date.now());
     const s=$('#lbSel'); if(!s)return;
     s.innerHTML='<option value="all">Overall</option>'+tests.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');

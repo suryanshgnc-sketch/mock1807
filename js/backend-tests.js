@@ -18,11 +18,11 @@
   function tiles(ms){const p=parts(ms);return [['d',p.d,'Days'],['h',p.h,'Hrs'],['m',p.m,'Min'],['s',p.s,'Sec']].map(([k,v,l])=>`<div><b data-u="${k}">${String(v).padStart(2,'0')}</b><small>${l}</small></div>`).join('')}
   function calLink(t){const s=new Date(t.release_at),e=new Date(s.getTime()+(Number(t.duration_minutes)||180)*60000),f=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.name)+'&dates='+f(s)+'/'+f(e)+'&details='+encodeURIComponent('MDCCCVII Tests - starts at the scheduled time.')}
   function card(t){
-    const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180;
+    const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180,ra=Number(t.reattempt_limit||0);
     return `<article class="bt-card ${r?'is-live':''}">
       <div class="bt-top"><span class="bt-pill ${r?'live':''}">${r?'Live now':'Upcoming'}</span><span class="bt-date">${tz(t.release_at)}</span></div>
       <h3>${esc2(t.name)}</h3>${t.description?`<p class="bt-desc">${esc2(t.description)}</p>`:''}
-      <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div></div>
+      <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div><div><small>Attempts</small><b>${ra===0?'1':ra+1}</b></div></div>
       ${r?'':`<div class="cd" data-cd="${esc2(t.id)}"><span>Opens in</span><div class="cd-t">${tiles(new Date(t.release_at)-Date.now())}</div></div>`}
       <button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>
       ${r?'':`<a class="bt-cal" href="${calLink(t)}" target="_blank" rel="noopener">+ Add to calendar</a>`}
@@ -47,7 +47,7 @@
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
+    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];render();
   }
@@ -70,17 +70,25 @@
       if(pdfUrl)try{URL.revokeObjectURL(pdfUrl)}catch(e){}
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
       S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,backendPaperPath:t.paper_url,maxMarks:Number(t.total_marks)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:total},()=>({a:'',s:0,t:0}))};
-      S.q[0].s=1;begin();
-      await createAttempt(t);
+      S.q[0].s=1;
+      const started=await createAttempt(t);
+      if(!started){S=null;return;}
+      begin();
     }catch(e){alert(e.message||'Could not open this test.')}
   }
   async function createAttempt(t){
     activeAttemptId=null;
     try{
-      const {data:{session}}=await sb.auth.getSession();if(!session)return;
-      const {data,error}=await sb.from('attempts').insert({user_id:session.user.id,test_id:t.id,status:'in_progress',max_score:Number(t.total_marks)||((Number(t.total_questions)||0)*Number(t.positive_marks??4))}).select('id').single();
-      if(error)throw error;activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();startAttemptAutosave();
-    }catch(e){console.warn('Attempt could not be created:',e.message)}
+      const {data:{session}}=await sb.auth.getSession();if(!session){alert('Please sign in before starting this test.');return false;}
+      const {data,error}=await sb.rpc('start_test_attempt',{p_test_id:Number(t.id)});
+      if(error)throw error;
+      if(!data?.id)throw new Error('The server did not create an attempt.');
+      activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();startAttemptAutosave();return true;
+    }catch(e){
+      console.warn('Attempt could not be created:',e.message);
+      alert(e.message||'You cannot start another attempt for this paper.');
+      return false;
+    }
   }
   async function syncAttempt(){
     if(!S?.backendAttemptId||S.done||!sb)return;

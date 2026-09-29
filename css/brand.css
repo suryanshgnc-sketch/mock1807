@@ -139,4 +139,4 @@
 .install-manual{margin-top:20px;padding:16px;border:1px solid #2a2d2a;border-radius:15px;text-align:left;color:#a8aca7;background:#0d100d;font-size:13px;line-height:1.55}
 .install-manual b{color:#fff}.install-manual p{margin:8px 0 0}.install-manual em{color:#86ff3f;font-style:normal}
 body.install-open{overflow:hidden}
-@media(max-width:720px){.install-app-btn{display:none}.install-card{padding:28px 20px}.install-card h2{font-size:26px}}
+@media(max-width:720px){.install-app-btn{display:inline-flex}.install-card{padding:28px 20px}.install-card h2{font-size:26px}}

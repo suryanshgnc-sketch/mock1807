@@ -6,7 +6,7 @@
   <title>MDCCCVII · Control Center</title>
   <meta name="theme-color" content="#080a0d">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=4">
+  <link rel="stylesheet" href="admin.css?v=5">
   <link rel="stylesheet" href="pro.css">
   <link rel="stylesheet" href="mdcccvii-admin.css">
 </head>
@@ -63,6 +63,8 @@
           <label>Release date & time<input name="release" type="datetime-local" required></label>
           <label>Total questions<input name="questions" type="number" min="1" value="75" required></label>
           <label>Total marks<input name="totalMarks" type="number" min="1" step="0.5" value="300" required></label>
+          <label>Re-attempts allowed<input name="reattempts" type="number" min="0" max="50" step="1" value="0" required><small>0 = one attempt total. 2 = up to 3 attempts.</small></label>
+          <label>Leaderboard<select name="leaderboard"><option value="true">Include this test</option><option value="false">Exclude this test</option></select><small>Excluded tests never appear in rankings.</small></label>
           <label>Marks / correct<input name="positive" type="number" min="0" step="0.5" value="4" required></label>
           <label>Negative marks · MCQ<input name="negativeA" type="number" min="0" step="0.5" value="1" required></label>
           <label>Negative marks · Numerical<input name="negativeB" type="number" min="0" step="0.5" value="1" required></label>
@@ -79,7 +81,7 @@
   <div id="studentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-student></div><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">STUDENT CONTROL</div><h2>Edit student</h2></div><button class="icon-btn" data-close-student>×</button></div><form id="studentForm"><input type="hidden" name="id"><div class="form-grid"><label class="wide">Display name<input name="name" required maxlength="80" placeholder="Student name"></label><label class="wide">Account status<select name="blocked"><option value="false">Active — can access tests</option><option value="true">Blocked — cannot access tests</option></select></label></div><div id="studentStats" class="student-stats"></div><div id="studentFormError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-student>Cancel</button><button type="submit" class="primary">Save student</button></div></form></div></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js?v=4"></script>
+  <script src="admin.js?v=5"></script>
   <script src="keys.js"></script>
   <script src="motion.js"></script>
 </body>
