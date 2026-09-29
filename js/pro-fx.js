@@ -23,7 +23,7 @@ addEventListener('scroll',onScroll,{passive:true});onScroll();
 const main=$('main');if(main){main.id=main.id||'main';const s=document.createElement('a');s.className='skip';s.href='#'+main.id;s.textContent='Skip to content';document.body.prepend(s)}
 
 /* hero headline word reveal (keeps <em> styling) */
-const h1=$('.hero h1');
+const h1=null;
 if(h1&&!reduce){let i=0;const wrap=n=>{$$(':scope',n);[...n.childNodes].forEach(c=>{
  if(c.nodeType===3){const f=document.createDocumentFragment();c.textContent.split(/(\s+)/).forEach(t=>{if(!t)return;
   if(/^\s+$/.test(t)){f.append(' ');return}const w=document.createElement('span');w.className='w';const p=document.createElement('span');p.style.setProperty('--i',i++);p.textContent=t;w.appendChild(p);f.appendChild(w)});c.replaceWith(f)}

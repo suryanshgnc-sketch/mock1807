@@ -7,7 +7,7 @@
 <meta name="twitter:card" content="summary"><meta name="twitter:title" content="MDCCCVII Tests"><meta name="twitter:description" content="Scheduled JEE mock tests with live rankings.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/professional.css">
@@ -16,71 +16,63 @@
 <link rel="stylesheet" href="css/mdcccvii-v3.css">
 <link rel="stylesheet" href="css/polished.css">
 <link rel="stylesheet" href="css/pro-final.css">
-<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/brand.css">
 </head><body>
 <canvas id="mdfx" aria-hidden="true"></canvas>
 <div class="md-cursor" aria-hidden="true"></div><div class="md-cursor md-cursor-2" aria-hidden="true"></div>
 <div id="land">
- <div class="aurora"><i></i><i></i><i></i></div>
- <nav class="hn"><a class="brand-lockup" href="#land" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests logo"><span><b>MDCCCVII</b><small>TESTS</small></span></a>
-  <div class="nav-links"><a href="#tests">Tests</a><a href="#leaderboard">Leaderboard</a><a href="#progress">Progress</a><a href="#how">How it works</a><a href="#faq">FAQ</a></div>
-  <div class="home-actions"><span id="profileChip"></span><button class="gbtn" onclick="profileSetup()">Profile</button><button class="gbtn" onclick="settings()">Settings</button></div></nav>
- <main class="hm">
-  <section class="hero hero-grid"><div class="hero-copy"><span class="pill"><i class="dot"></i> Test series · Live rankings</span><h1>Compete under <em>real exam conditions</em>.</h1>
-   <p>Scheduled full-length mock tests in an exam-grade interface, evaluated on our servers and ranked live against every student.</p>
-   <div class="hero-cta"><a class="cta" href="#backendTestsSection">View upcoming tests</a><a class="cta ghost" href="#leaderboard">See leaderboard</a></div>
-   <div class="hero-points"><span>Exam-style interface</span><span>Scheduled test series</span><span>Verified results</span></div>
-   <div class="h-stats"><div><b data-count="180">0</b><small>Minute tests</small></div><div><b data-count="75">0</b><small>Questions</small></div><div><b data-count="300">0</b><small>Max marks</small></div></div>
-   <div id="profileBanner" class="profile-banner gl"></div></div>
-   <div class="hv" aria-hidden="true"><div class="hv-win"><div class="hv-bar"><i></i><i></i><i></i><span>MDCCCVII · Mock Test 01</span><b id="hvTimer">02:59:41</b></div>
-    <div class="hv-body"><div class="hv-q"><small>Question 14 · Section A</small><div class="ln w90"></div><div class="ln w70"></div><div class="opt-r"><s></s><div class="ln w40"></div></div><div class="opt-r sel"><s></s><div class="ln w50"></div></div><div class="opt-r"><s></s><div class="ln w30"></div></div></div>
-    <div class="hv-pal"><u style="--d:0.0s"></u><u style="--d:2.1s"></u><u style="--d:1.3s"></u><u style="--d:0.5s"></u><u style="--d:2.6s"></u><u style="--d:1.8s"></u><u style="--d:1.0s"></u><u style="--d:0.2s"></u><u style="--d:2.3s"></u><u style="--d:1.5s"></u><u style="--d:0.7s"></u><u style="--d:2.8s"></u><u style="--d:2.0s"></u><u style="--d:1.2s"></u><u style="--d:0.4s"></u><u style="--d:2.5s"></u><u style="--d:1.7s"></u><u style="--d:0.9s"></u><u style="--d:0.1s"></u><u style="--d:2.2s"></u><u style="--d:1.4s"></u><u style="--d:0.6s"></u><u style="--d:2.7s"></u><u style="--d:1.9s"></u><u style="--d:1.1s"></u><u style="--d:0.3s"></u><u style="--d:2.4s"></u><u style="--d:1.6s"></u><u style="--d:0.8s"></u><u style="--d:0.0s"></u></div></div></div>
-    <div class="hv-fl f1"><small>Your rank</small><b>#12</b><em>▲ 4 places</em></div>
-    <div class="hv-fl f2"><svg viewBox="0 0 44 44" width="52"><circle cx="22" cy="22" r="18" fill="none" stroke="#22304d" stroke-width="5"/><circle class="ring" cx="22" cy="22" r="18" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg><div><small>Accuracy</small><b>82%</b></div></div></div>
-  </section>
-  <div class="md-signal-rail" aria-label="Platform status"><span><i></i> SYSTEM ONLINE</span><span>SUPABASE CONNECTED</span><span>LIVE RANKINGS</span><span>SECURE TEST DELIVERY</span><span>IST / UTC+5:30</span></div>
-  <div class="ticker" aria-hidden="true"><div class="tk"><span>Scheduled tests</span><span>Live leaderboard</span><span>Server-side evaluation</span><span>Exam-grade interface</span><span>Instant scorecards</span><span>Secure answer keys</span><span>Scheduled tests</span><span>Live leaderboard</span><span>Server-side evaluation</span><span>Exam-grade interface</span><span>Instant scorecards</span><span>Secure answer keys</span></div></div>
-  <div id="resumeBox" class="gl" hidden></div>
-  <section class="sec reveal" id="backendTestsSection"><a id="tests"></a>
-   <div class="sec-head"><div><div class="kicker">Test series</div><h2>Upcoming Tests</h2><p class="mut">Tests unlock automatically at their scheduled time.</p></div><button class="gbtn" id="refreshBackendTests">Refresh</button></div>
-   <div id="backendTests" class="bt-grid"><div class="bt-empty">Loading tests…</div></div>
-  </section>
-  <section class="sec reveal md-command" id="platform"><div class="command-grid">
-    <div class="command-main"><div class="kicker">MDCCCVII / PLATFORM</div><h2>Not another PDF viewer.<br><span>It is a test system.</span></h2><p>Scheduled releases, controlled attempts, server-side records, declared results and a live competitive layer — all in one place.</p></div>
-    <div class="command-stats"><div><b data-count="75">0</b><small>MAX QUESTIONS</small></div><div><b data-count="180">0</b><small>MINUTE TESTS</small></div><div><b data-count="300">0</b><small>MAX MARKS</small></div><div><b>24/7</b><small>RESULT HISTORY</small></div></div>
-  </div></section>
-  <section class="sec reveal" id="how"><div class="sec-head"><div><div class="kicker">How it works</div><h2>From sign-in to scorecard</h2><p class="mut">Four steps. No setup, no downloads.</p></div></div>
-   <ol class="steps"><li><span>01</span><h3>Sign in</h3><p>Continue with Google and set your candidate profile.</p></li><li><span>02</span><h3>Pick a test</h3><p>Tests unlock at a fixed time, the same for every student.</p></li><li><span>03</span><h3>Attempt live</h3><p>Timed, section-wise, with palette and numeric keypad.</p></li><li><span>04</span><h3>Get ranked</h3><p>Server-side evaluation, scorecard and live leaderboard.</p></li></ol></section>
-  <section class="sec reveal" id="about"><div class="sec-head"><div><div class="kicker">The platform</div><h2>Built for serious preparation</h2></div></div>
-   <div class="bento">
-    <article class="bn b-wide"><div><h3>Exam-grade interface</h3><p>Question palette, section tabs, countdown timer, mark-for-review and numerical keypad, laid out like the real thing.</p></div>
-     <div class="viz-pal" aria-hidden="true"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div></article>
-    <article class="bn"><div class="viz-ring" aria-hidden="true"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#16231a" stroke-width="4"/><circle class="rg" cx="22" cy="22" r="18" fill="none" stroke="#86ff3f" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg><b>82%</b></div><h3>Instant analysis</h3><p>Accuracy, attempt rate and marks lost, per subject.</p></article>
-    <article class="bn"><div class="viz-clock" aria-hidden="true"><i></i></div><h3>Scheduled releases</h3><p>Every test opens at one fixed time for everyone.</p></article>
-    <article class="bn"><div class="viz-bars" aria-hidden="true"><u style="--h:90%"></u><u style="--h:72%"></u><u style="--h:58%"></u><u style="--h:41%"></u><u style="--h:30%"></u></div><h3>Live leaderboard</h3><p>Score first, speed breaks ties. Best attempt counts.</p></article>
-    <article class="bn b-wide"><div><h3>Verified evaluation</h3><p>Answer keys stay on the server and never reach your browser during a test. Once published, every attempt is scored automatically.</p></div><div class="viz-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#86ff3f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 018 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg></div></article>
-   </div></section>
-  <section class="sec reveal" id="results"><div class="sec-head"><div><div class="kicker">Scorecards</div><h2>Your declared results</h2></div></div><div class="bt-grid" id="resBody"></div></section>
-  <section class="sec reveal" id="leaderboard"><div class="sec-head"><div><div class="kicker">Rankings</div><h2>Leaderboard</h2><p class="mut">Ranked by score, with faster completion breaking ties. Your best attempt per test counts.</p></div><div class="lb-ctl"><select id="lbSel"><option>Overall</option></select><button class="gbtn" id="lbRefresh">Refresh</button></div></div><div id="lbBody"></div></section>
-  <section class="sec reveal" id="progress"><div class="sec-head"><div><div class="kicker">Overview</div><h2>Your progress</h2></div></div><div class="stats" id="stats"></div><div class="anl" id="anl"></div></section>
-  <section class="sec"><div class="sec-head"><div><div class="kicker">History</div><h2>Previous attempts</h2></div></div><div id="hist"></div></section>
-  <section class="sec reveal" id="faq"><div class="sec-head"><div><div class="kicker">FAQ</div><h2>Questions, answered</h2></div></div><div class="faq">
-   <details><summary>Is MDCCCVII free?</summary><p>Yes. The platform is currently free and has no ads.</p></details>
-   <details><summary>When do tests start?</summary><p>Each test has a scheduled start. It unlocks automatically for all students at the same time.</p></details>
-   <details><summary>How is my score calculated?</summary><p>On our servers, after the answer key is published. Keys can be corrected, which may re-evaluate scores and ranks.</p></details>
-   <details><summary>Who can see my data?</summary><p>Other students see your name, photo and scores on the leaderboard. Your email is never shown. Read the <a href="legal.html#privacy">Privacy Policy</a>.</p></details>
-   <details><summary>Is this affiliated with NTA?</summary><p>No. It is an independent practice platform, not affiliated with or endorsed by NTA or any coaching institute.</p></details></div></section>
-  <section class="cta-band reveal"><div><h2>Ready for the next test?</h2><p>Sign in, pick a test and see where you actually stand.</p></div><a class="cta" href="#backendTestsSection">View upcoming tests</a></section>
-  <section class="sec reveal md-legal-contact" id="contact"><div class="legal-grid">
-    <a class="legal-card" href="legal.html#terms"><span>01</span><div><b>Terms &amp; fair play</b><small>Rules for attempts, rankings, access and declared results.</small></div><em>↗</em></a>
-    <a class="legal-card" href="legal.html#privacy"><span>02</span><div><b>Privacy &amp; data</b><small>What is stored, why it is used and what students can request.</small></div><em>↗</em></a>
-    <a class="legal-card" href="mailto:suryanshsharma1807@gmail.com"><span>03</span><div><b>Contact / rights</b><small>suryanshsharma1807@gmail.com · support, privacy and copyright notices.</small></div><em>↗</em></a>
-  </div></section>
-  <p id="paperInfo" hidden></p>
-  <footer class="site-foot2"><div class="sf-grid"><div><div class="sf-brand"><img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests"><span>MDCCCVII<small>TESTS</small></span></div><p>An independent computer-based test platform for JEE aspirants, with scheduled tests, verified results and live rankings.</p></div><div><h4>Platform</h4><a href="#backendTestsSection">Tests</a><a href="#leaderboard">Leaderboard</a><a href="#progress">Progress</a></div><div><h4>Legal</h4><a href="legal.html#terms">Terms of Use</a><a href="legal.html#privacy">Privacy Policy</a><a href="legal.html#cookies">Cookies &amp; Storage</a><a href="legal.html#fairplay">Fair Play Policy</a><a href="legal.html#copyright">Copyright &amp; Takedown</a><a href="legal.html#disclaimer">Disclaimer</a></div><div><h4>Company</h4><a href="legal.html#about">About</a><a href="legal.html#contact">Contact</a><a href="legal.html#grievance">Grievance Officer</a></div></div>
-  <div class="sf-base"><span>© 2026 MDCCCVII. All rights reserved. Designed &amp; developed by <b>suryansh1807</b>.</span><span>Independent platform. Not affiliated with or endorsed by the National Testing Agency.</span></div></footer>
- </main>
-</div>
+<nav class="x-nav" id="xNav"><a class="x-brand" href="#top" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></a>
+ <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
+ <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button></div></nav>
+<main class="x-main" id="top">
+<div class="x-hero"><div class="x-mark" aria-hidden="true">MDCCCVII</div>
+ <div class="x-hero-in"><div class="x-copy">
+  <div class="x-tag"><i></i> MDCCCVII / 1807 · Test series live</div>
+  <h1><span class="hl"><span>Sit the exam.</span></span><span class="hl"><span class="gr">Earn the rank.</span></span></h1>
+  <p class="x-lead">Scheduled full-length JEE mock tests in an exam-grade interface. Scored on our servers, ranked live against every student on the same clock.</p>
+  <div class="x-cta"><a class="x-btn solid" href="#tests">View upcoming tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="x-btn ghost" href="#leaderboard">See leaderboard</a></div>
+  <div class="x-proof"><div><b data-n="180">0</b><small>minutes</small></div><div><b data-n="75">0</b><small>questions</small></div><div><b data-n="300">0</b><small>max marks</small></div></div>
+  <div id="profileBanner" class="profile-banner gl"></div></div>
+ <div class="x-stage" aria-hidden="true"><div class="x-con"><div class="c-bar"><i></i><i></i><i></i><span>MOCK TEST 01 · SECTION A</span><b id="xTimer">02:59:41</b></div>
+  <div class="c-body"><div class="c-q"><small>Question <em id="xQn">14</em> of 75</small><p>A particle moves on the x-axis with v = 3t² − 6t. Its displacement in the first 3 s is:</p>
+   <div class="c-o"><s></s><span>A &nbsp;0 m</span></div><div class="c-o"><s></s><span>B &nbsp;3 m</span></div><div class="c-o"><s></s><span>C &nbsp;6 m</span></div><div class="c-o"><s></s><span>D &nbsp;9 m</span></div></div>
+   <div class="c-pal"><u style="--i:0"></u><u style="--i:1"></u><u style="--i:2"></u><u style="--i:3"></u><u style="--i:4"></u><u style="--i:5"></u><u style="--i:6"></u><u style="--i:7"></u><u style="--i:8"></u><u style="--i:9"></u><u style="--i:10"></u><u style="--i:11"></u><u style="--i:12"></u><u style="--i:13"></u><u style="--i:14"></u><u style="--i:15"></u><u style="--i:16"></u><u style="--i:17"></u><u style="--i:18"></u><u style="--i:19"></u><u style="--i:20"></u><u style="--i:21"></u><u style="--i:22"></u><u style="--i:23"></u><u style="--i:24"></u><u style="--i:25"></u><u style="--i:26"></u><u style="--i:27"></u><u style="--i:28"></u><u style="--i:29"></u></div></div>
+  <div class="c-foot"><span>Answered <b id="xAns">0</b>/30</span><em>Save &amp; Next</em></div></div>
+  <div class="x-rank"><small>LIVE RANKING · SAMPLE</small><ol id="xRank"></ol></div></div>
+ </div></div>
+<div class="x-marq" aria-hidden="true"><div><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i></div></div>
+<div id="resumeBox" class="gl" hidden></div>
+<section class="x-sec rv" id="backendTestsSection"><a id="tests"></a><div class="x-head"><div><div class="x-k"><b>I</b><span>Tests</span></div><h2>Upcoming tests</h2><p>Every test unlocks at its scheduled time, the same for everyone.</p></div><button class="x-btn ghost" id="refreshBackendTests">Refresh</button></div>
+ <div id="backendTests" class="bt-grid"><div class="bt-empty">Loading tests…</div></div></section>
+<section class="x-sec rv" id="method"><div class="x-head"><div><div class="x-k"><b>II</b><span>Method</span></div><h2>Four steps to a rank</h2><p>No setup, no downloads. Just the exam.</p></div></div>
+ <ol class="x-steps"><li><b>I</b><h3>Sign in</h3><p>Continue with Google and set your candidate profile.</p></li><li><b>II</b><h3>Pick a test</h3><p>Tests open at a fixed time for all students.</p></li><li><b>III</b><h3>Attempt live</h3><p>Timed sections, question palette, numeric keypad.</p></li><li><b>IV</b><h3>Get ranked</h3><p>Server-side scoring, scorecard, live leaderboard.</p></li></ol></section>
+<section class="x-sec rv" id="about"><div class="x-head"><div><div class="x-k"><b>III</b><span>Platform</span></div><h2>Built like an exam, run like a system</h2></div></div>
+ <div class="x-bento">
+  <article class="bn wide"><div><h3>Exam-grade interface</h3><p>Section tabs, countdown timer, mark-for-review, question palette and numerical keypad, laid out like the real paper.</p></div><div class="v-pal" aria-hidden="true"><u style="--i:0"></u><u style="--i:1"></u><u style="--i:2"></u><u style="--i:3"></u><u style="--i:4"></u><u style="--i:5"></u><u style="--i:6"></u><u style="--i:7"></u><u style="--i:8"></u><u style="--i:9"></u><u style="--i:10"></u><u style="--i:11"></u><u style="--i:12"></u><u style="--i:13"></u><u style="--i:14"></u><u style="--i:15"></u><u style="--i:16"></u><u style="--i:17"></u><u style="--i:18"></u><u style="--i:19"></u></div></article>
+  <article class="bn"><div class="v-ring" aria-hidden="true"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#17241a" stroke-width="4"/><circle class="rg" cx="22" cy="22" r="18" fill="none" stroke="#86ff3f" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg><b>82%</b></div><h3>Instant analysis</h3><p>Accuracy, attempt rate and marks lost, per subject.</p></article>
+  <article class="bn"><div class="v-clock" aria-hidden="true"><i></i></div><h3>Fixed start time</h3><p>One release time. One clock. Equal footing.</p></article>
+  <article class="bn"><div class="v-bars" aria-hidden="true"><u style="--h:92%"></u><u style="--h:74%"></u><u style="--h:58%"></u><u style="--h:42%"></u><u style="--h:30%"></u></div><h3>Live leaderboard</h3><p>Score first, speed breaks ties.</p></article>
+  <article class="bn wide"><div><h3>Verified evaluation</h3><p>Answer keys stay on the server and never reach your browser during a test. Once published, every attempt is scored automatically.</p></div><div class="v-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#86ff3f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 018 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg></div></article>
+ </div></section>
+<section class="x-sec rv" id="results"><div class="x-head"><div><div class="x-k"><b>IV</b><span>Results</span></div><h2>Your declared results</h2></div></div><div class="bt-grid" id="resBody"></div></section>
+<section class="x-sec rv" id="leaderboard"><div class="x-head"><div><div class="x-k"><b>V</b><span>Rankings</span></div><h2>Leaderboard</h2><p>Ranked by score, faster completion breaks ties. Best attempt per test counts.</p></div><div class="lb-ctl"><select id="lbSel"><option>Overall</option></select><button class="x-btn ghost" id="lbRefresh">Refresh</button></div></div><div id="lbBody"></div></section>
+<section class="x-sec rv" id="progress"><div class="x-head"><div><div class="x-k"><b>VI</b><span>Progress</span></div><h2>Your progress</h2></div></div><div class="stats" id="stats"></div><div class="anl" id="anl"></div>
+ <div class="x-sub">Previous attempts</div><div id="hist"></div></section>
+<section class="x-sec rv" id="faq"><div class="x-head"><div><div class="x-k"><b>VII</b><span>FAQ</span></div><h2>Questions, answered</h2></div></div><div class="x-faq">
+ <details><summary>Is MDCCCVII free?</summary><p>Yes. It is currently free and carries no advertising.</p></details>
+ <details><summary>When do tests start?</summary><p>Each test has a scheduled start and unlocks automatically for all students at once.</p></details>
+ <details><summary>How is my score calculated?</summary><p>On our servers, after the answer key is published. Keys can be corrected, which may re-evaluate scores and ranks.</p></details>
+ <details><summary>Who can see my data?</summary><p>Other students see your name, photo and scores on the leaderboard. Your email is never shown. See the <a href="legal.html#privacy">Privacy Policy</a>.</p></details>
+ <details><summary>Is this affiliated with NTA?</summary><p>No. MDCCCVII is an independent practice platform, not affiliated with or endorsed by NTA or any coaching institute.</p></details></div></section>
+<section class="x-band rv"><div><h2>The next test is on the clock.</h2><p>Sign in, take it, and see where you actually stand.</p></div><a class="x-btn solid" href="#tests">View upcoming tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></section>
+<p id="paperInfo" hidden></p>
+<div class="x-foot" role="contentinfo"><div class="f-grid"><div class="f-b"><div class="x-brand"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></div><p>An independent computer-based test platform for JEE aspirants: scheduled tests, verified results, live rankings.</p></div>
+ <div><h4>Platform</h4><a href="#tests">Tests</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
+ <div><h4>Legal</h4><a href="legal.html#terms">Terms of Use</a><a href="legal.html#privacy">Privacy Policy</a><a href="legal.html#cookies">Cookies &amp; Storage</a><a href="legal.html#fairplay">Fair Play</a><a href="legal.html#copyright">Copyright &amp; Takedown</a><a href="legal.html#disclaimer">Disclaimer</a></div>
+ <div><h4>Contact</h4><a href="mailto:suryanshsharma1807@gmail.com">suryanshsharma1807@gmail.com</a><a href="legal.html#grievance">Grievance Officer</a><a href="legal.html#about">About</a></div></div>
+ <div class="f-word" aria-hidden="true">MDCCCVII</div>
+ <div class="f-base"><span>© 2026 MDCCCVII. All rights reserved. Designed &amp; developed by <b>suryansh1807</b>.</span><span>Independent platform. Not affiliated with or endorsed by the National Testing Agency.</span></div></div>
+</main></div>
 <div id="app" hidden>
  <header><div class="logo"><img src="assets/mdcccvii-logo.png" alt="MDCCCVII Tests"><div><b>MDCCCVII TESTS</b><i>Independent JEE practice platform</i></div></div>
   <div class="cand"><div class="av"><img id="candidatePhoto" alt="Candidate"></div><div>Candidate Name : <b id="cn"></b><br>Roll No. : <b id="cr"></b><br>Subject Name : <b id="sn"></b><br>Remaining Time : <span id="timer">03:00:00</span></div></div></header>
@@ -119,6 +111,6 @@
 <script src="js/motion.js"></script>
 <script src="js/mdcccvii-v3.js"></script>
 <script src="js/pro-fx.js"></script>
-<script src="js/home.js"></script>
+<script src="js/brand.js"></script>
 <noscript><p style="position:fixed;bottom:0;left:0;right:0;padding:12px;text-align:center;background:#86ff3f;color:#061006;font:700 13px Inter,sans-serif">JavaScript is required to take tests on MDCCCVII.</p></noscript>
 </body></html>
