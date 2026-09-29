@@ -1,154 +1,166 @@
--- ============================================================
--- MDCCCVII TESTS — EXISTING DATABASE REPAIR / V10.1
--- DATA-PRESERVING MIGRATION
---
--- IMPORTANT:
---   Run ONLY this file against an existing MDCCCVII database.
---   It does NOT drop tests, attempts, answers, profiles or scores.
---   It fixes the V10 RPC/schema mismatch with the ORIGINAL schema,
---   where attempts.id is BIGINT (not UUID).
--- ============================================================
+-- MDCCCVII: run this whole script ONCE in Supabase > SQL Editor.
 
-BEGIN;
+-- 1) Columns for scores
+alter table public.attempts
+  add column if not exists score numeric,
+  add column if not exists correct_count int,
+  add column if not exists incorrect_count int;
 
--- ------------------------------------------------------------
--- 1. Required non-destructive columns
--- ------------------------------------------------------------
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS blocked boolean NOT NULL DEFAULT false;
+-- 2) Answer keys (locked: students can never read this table)
+create table if not exists public.test_keys(
+  test_id bigint primary key references public.tests(id) on delete cascade,
+  keys text[] not null,
+  published_at timestamptz not null default now());
+alter table public.test_keys enable row level security;
 
-ALTER TABLE public.tests
-  ADD COLUMN IF NOT EXISTS reattempt_limit integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS leaderboard_enabled boolean NOT NULL DEFAULT true,
-  ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false;
+-- 3) Stop students editing their own scores
+create or replace function public.guard_scores() returns trigger language plpgsql as $$
+begin
+  if current_setting('app.eval', true) is distinct from '1' then
+    new.score := old.score; new.correct_count := old.correct_count; new.incorrect_count := old.incorrect_count;
+  end if;
+  return new;
+end $$;
+drop trigger if exists trg_guard_scores on public.attempts;
+create trigger trg_guard_scores before update on public.attempts
+  for each row execute function public.guard_scores();
 
-ALTER TABLE public.attempts
-  ADD COLUMN IF NOT EXISTS expires_at timestamptz,
-  ADD COLUMN IF NOT EXISTS duration_minutes_snapshot integer,
-  ADD COLUMN IF NOT EXISTS total_questions_snapshot integer,
-  ADD COLUMN IF NOT EXISTS positive_marks_snapshot numeric,
-  ADD COLUMN IF NOT EXISTS negative_mcq_snapshot numeric,
-  ADD COLUMN IF NOT EXISTS negative_numerical_snapshot numeric;
+-- 4) Admin: publish key + evaluate every submitted attempt
+create or replace function public.publish_answer_key(p_test_id bigint, p_key text) returns int
+language plpgsql security definer set search_path = public as $$
+declare t tests; ks text[]; per int; n int;
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  select * into t from tests where id = p_test_id;
+  select array_agg(case upper(x) when 'A' then '1' when 'B' then '2' when 'C' then '3' when 'D' then '4' else x end)
+    into ks from unnest(regexp_split_to_array(trim(p_key), '[\s,;]+')) x where x <> '';
+  if coalesce(array_length(ks,1),0) <> t.total_questions then
+    raise exception 'Key has % answers but the test has % questions', coalesce(array_length(ks,1),0), t.total_questions;
+  end if;
+  insert into test_keys(test_id, keys) values (p_test_id, ks)
+    on conflict (test_id) do update set keys = excluded.keys, published_at = now();
+  per := t.total_questions / 3;
+  perform set_config('app.eval','1',true);
+  with g as (
+    select r.attempt_id,
+      sum(case when r.ok then 1 else 0 end) c,
+      sum(case when r.att and not coalesce(r.ok,false) then 1 else 0 end) w,
+      sum(case when r.ok then t.positive_marks
+               when r.att then -(case when r.isnum then t.negative_numerical else t.negative_mcq end)
+               else 0 end) sc
+    from (select an.attempt_id,
+            (an.response is not null and an.response <> '') att,
+            ((an.question_no-1) % per) >= per-5 isnum,
+            case when ((an.question_no-1) % per) >= per-5 then
+                   case when an.response ~ '^-?\d+(\.\d+)?$' and ks[an.question_no] ~ '^-?\d+(\.\d+)?$'
+                        then abs(an.response::numeric - ks[an.question_no]::numeric) < 1e-9 else false end
+                 else an.response = ks[an.question_no] end ok
+          from answers an join attempts atm on atm.id = an.attempt_id
+          where atm.test_id = p_test_id and atm.status = 'submitted') r
+    group by r.attempt_id)
+  update attempts a set score = coalesce(g.sc,0), correct_count = g.c, incorrect_count = g.w
+    from g where a.id = g.attempt_id;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+grant execute on function public.publish_answer_key(bigint, text) to authenticated;
 
-ALTER TABLE public.tests DROP CONSTRAINT IF EXISTS tests_reattempt_limit_check;
-ALTER TABLE public.tests
-  ADD CONSTRAINT tests_reattempt_limit_check
-  CHECK (reattempt_limit BETWEEN 0 AND 50);
+-- 5) Student: own declared results
+create or replace function public.get_my_results()
+returns table(test_id bigint, name text, score numeric, max_score numeric,
+              correct_count int, incorrect_count int, unanswered_count int)
+language sql security definer set search_path = public stable as $$
+  select distinct on (a.test_id) a.test_id, t.name, a.score, a.max_score,
+         a.correct_count, a.incorrect_count, a.unanswered_count
+  from attempts a join tests t on t.id = a.test_id join test_keys k on k.test_id = a.test_id
+  where a.user_id = auth.uid() and a.status = 'submitted' and a.score is not null
+  order by a.test_id, a.score desc $$;
+grant execute on function public.get_my_results() to authenticated;
 
--- Safely snapshot the settings of already-existing attempts.
--- Only NULL snapshot fields are filled; existing attempt data/scores remain unchanged.
-UPDATE public.attempts a
-SET
-  duration_minutes_snapshot = COALESCE(a.duration_minutes_snapshot, t.duration_minutes),
-  total_questions_snapshot = COALESCE(a.total_questions_snapshot, t.total_questions),
-  positive_marks_snapshot = COALESCE(a.positive_marks_snapshot, t.positive_marks),
-  negative_mcq_snapshot = COALESCE(a.negative_mcq_snapshot, t.negative_mcq),
-  negative_numerical_snapshot = COALESCE(a.negative_numerical_snapshot, t.negative_numerical),
-  expires_at = COALESCE(
-    a.expires_at,
-    CASE
-      WHEN a.status = 'in_progress' THEN
-        a.started_at + make_interval(mins => GREATEST(COALESCE(t.duration_minutes,180),1))
-      ELSE NULL
-    END
+-- 6) Leaderboard (only tests whose key is published)
+create or replace function public.get_leaderboard(p_test_id bigint default null)
+returns table(rank bigint, user_id uuid, name text, photo_url text, score numeric, max_score numeric,
+              correct_count bigint, time_taken_seconds bigint, tests_taken bigint, is_me boolean)
+language sql security definer set search_path = public stable as $$
+  with best as (
+    select distinct on (a.user_id, a.test_id) a.user_id, a.test_id, a.score, a.max_score,
+           coalesce(a.correct_count,0) cc, coalesce(a.time_taken_seconds,0) tt
+    from attempts a join tests t on t.id = a.test_id
+    where a.status = 'submitted' and a.score is not null and t.enabled
+      and exists (select 1 from test_keys k where k.test_id = a.test_id)
+      and (p_test_id is null or a.test_id = p_test_id)
+    order by a.user_id, a.test_id, a.score desc, a.time_taken_seconds asc
+  ), agg as (
+    select user_id, sum(score) score, sum(max_score) max_score, sum(cc) cc, sum(tt) tt, count(*) n
+    from best group by user_id
   )
-FROM public.tests t
-WHERE t.id = a.test_id
-  AND (
-    a.duration_minutes_snapshot IS NULL
-    OR a.total_questions_snapshot IS NULL
-    OR a.positive_marks_snapshot IS NULL
-    OR a.negative_mcq_snapshot IS NULL
-    OR a.negative_numerical_snapshot IS NULL
-    OR (a.status = 'in_progress' AND a.expires_at IS NULL)
-  );
+  select rank() over (order by g.score desc, g.tt asc), g.user_id,
+         coalesce(nullif(p.name,''),'Student'), p.photo_url, g.score, g.max_score, g.cc, g.tt, g.n,
+         g.user_id = auth.uid()
+  from agg g left join profiles p on p.id = g.user_id
+  order by 1, g.user_id $$;
+grant execute on function public.get_leaderboard(bigint) to authenticated;
+-- ============================================================
+-- MDCCCVII TESTS — CANONICAL DATABASE MIGRATION V10
+-- Run AFTER the original project setup, ONCE.
+-- This replaces the need to run ADMIN-V6.sql / ADMIN-V7.sql /
+-- LEADERBOARD.sql separately.
+-- ============================================================
 
--- ------------------------------------------------------------
--- 2. Supporting tables
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.attempt_grants (
-  id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  test_id bigint NOT NULL REFERENCES public.tests(id) ON DELETE CASCADE,
-  remaining integer NOT NULL DEFAULT 1 CHECK (remaining >= 0),
+-- ---------- TEST POLICY ----------
+alter table public.tests
+  add column if not exists reattempt_limit integer not null default 0,
+  add column if not exists leaderboard_enabled boolean not null default true,
+  add column if not exists archived boolean not null default false;
+
+alter table public.tests drop constraint if exists tests_reattempt_limit_check;
+alter table public.tests add constraint tests_reattempt_limit_check check (reattempt_limit between 0 and 50);
+
+-- ---------- SERVER-OWNED ATTEMPT SNAPSHOT ----------
+alter table public.attempts
+  add column if not exists expires_at timestamptz,
+  add column if not exists duration_minutes_snapshot integer,
+  add column if not exists total_questions_snapshot integer,
+  add column if not exists positive_marks_snapshot numeric,
+  add column if not exists negative_mcq_snapshot numeric,
+  add column if not exists negative_numerical_snapshot numeric;
+
+-- ---------- EXTRA ATTEMPT GRANTS ----------
+create table if not exists public.attempt_grants(
+  id bigint generated by default as identity primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  test_id bigint not null references public.tests(id) on delete cascade,
+  remaining integer not null default 1 check (remaining >= 0),
   note text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz not null default now()
 );
+alter table public.attempt_grants enable row level security;
 
-CREATE TABLE IF NOT EXISTS public.admin_audit_log (
-  id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  admin_user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-  action text NOT NULL,
+-- ---------- ADMIN AUDIT LOG ----------
+create table if not exists public.admin_audit_log(
+  id bigint generated by default as identity primary key,
+  admin_user_id uuid references public.profiles(id) on delete set null,
+  action text not null,
   target_type text,
   target_id text,
-  details jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );
+alter table public.admin_audit_log enable row level security;
 
-ALTER TABLE public.attempt_grants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
+-- ---------- INDEXES ----------
+create index if not exists idx_attempts_user_test_status on public.attempts(user_id,test_id,status);
+create index if not exists idx_attempts_expires on public.attempts(expires_at) where status='in_progress';
+create index if not exists idx_attempts_submitted on public.attempts(submitted_at) where status='submitted';
+create index if not exists idx_attempt_grants_user_test on public.attempt_grants(user_id,test_id,remaining);
+create index if not exists idx_audit_created on public.admin_audit_log(created_at desc);
 
-CREATE INDEX IF NOT EXISTS idx_attempts_user_test_status
-  ON public.attempts(user_id, test_id, status);
+-- ---------- ATTEMPT LIMIT + IMMUTABLE SNAPSHOT ----------
+drop trigger if exists trg_guard_test_attempt_limit on public.attempts;
 
-CREATE INDEX IF NOT EXISTS idx_attempts_expires
-  ON public.attempts(expires_at)
-  WHERE status = 'in_progress';
-
-CREATE INDEX IF NOT EXISTS idx_attempts_submitted
-  ON public.attempts(submitted_at)
-  WHERE status = 'submitted';
-
-CREATE INDEX IF NOT EXISTS idx_attempt_grants_user_test
-  ON public.attempt_grants(user_id, test_id, remaining);
-
-CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created
-  ON public.admin_audit_log(created_at DESC);
-
--- ------------------------------------------------------------
--- 3. Student block helper
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.is_current_user_blocked()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT COALESCE(
-    (SELECT blocked FROM public.profiles WHERE id = auth.uid()),
-    false
-  );
-$$;
-
-GRANT EXECUTE ON FUNCTION public.is_current_user_blocked() TO authenticated;
-
--- ------------------------------------------------------------
--- 4. Drop only V10 functions whose signatures/return types were
---    incompatible with the original BIGINT attempt IDs.
--- ------------------------------------------------------------
-DROP FUNCTION IF EXISTS public.start_test_attempt(bigint);
-DROP FUNCTION IF EXISTS public.save_attempt_answers(bigint, jsonb);
-DROP FUNCTION IF EXISTS public.save_attempt_answers(uuid, jsonb);
-DROP FUNCTION IF EXISTS public.get_attempt_resume(bigint);
-DROP FUNCTION IF EXISTS public.get_attempt_resume(uuid);
-DROP FUNCTION IF EXISTS public.submit_test_attempt(bigint, jsonb);
-DROP FUNCTION IF EXISTS public.submit_test_attempt(uuid, jsonb);
-
-DROP FUNCTION IF EXISTS public.admin_force_submit(bigint, text);
-DROP FUNCTION IF EXISTS public.admin_force_submit(uuid, text);
-DROP FUNCTION IF EXISTS public.admin_invalidate_attempt(bigint, text);
-DROP FUNCTION IF EXISTS public.admin_invalidate_attempt(uuid, text);
-
-DROP FUNCTION IF EXISTS public.admin_test_stats(bigint);
-
--- ------------------------------------------------------------
--- 5. Secure server-side attempt creation
---    IMPORTANT: attempts.id is BIGINT in the existing database.
--- ------------------------------------------------------------
-CREATE FUNCTION public.start_test_attempt(p_test_id bigint)
-RETURNS TABLE(
-  id bigint,
+create or replace function public.start_test_attempt(p_test_id bigint)
+returns table(
+  id uuid,
   test_id bigint,
   started_at timestamptz,
   expires_at timestamptz,
@@ -159,1100 +171,268 @@ RETURNS TABLE(
   negative_numerical numeric,
   max_score numeric
 )
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
+language plpgsql security definer set search_path=public as $$
+declare
   v_uid uuid := auth.uid();
-  t public.tests%ROWTYPE;
-  a public.attempts%ROWTYPE;
+  t public.tests%rowtype;
   used_count integer;
   base_limit integer;
   grant_id bigint;
-  started timestamptz;
+  grant_remaining integer;
+  new_id uuid;
+  started timestamptz := now();
   expires timestamptz;
-  v_duration integer;
-  v_positive numeric;
-  v_negative_mcq numeric;
-  v_negative_num numeric;
-  v_max numeric;
-  new_attempt_id bigint;
-BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Please sign in before starting a test.';
-  END IF;
+begin
+  if v_uid is null then raise exception 'Please sign in before starting a test.'; end if;
 
-  SELECT *
-  INTO t
-  FROM public.tests
-  WHERE id = p_test_id;
+  select * into t from public.tests where id=p_test_id for update;
+  if not found or coalesce(t.enabled,false)=false or coalesce(t.archived,false)=true then
+    raise exception 'This test is not available.';
+  end if;
+  if t.release_at > now() then raise exception 'This test has not started yet.'; end if;
+  if exists(select 1 from public.profiles p where p.id=v_uid and coalesce(p.blocked,false)) then
+    raise exception 'Your student account is blocked. You cannot start a new test.';
+  end if;
 
-  IF NOT FOUND OR COALESCE(t.enabled, false) = false
-     OR COALESCE(t.archived, false) = true THEN
-    RAISE EXCEPTION 'This test is not available.';
-  END IF;
+  select count(*) into used_count from public.attempts a
+  where a.user_id=v_uid and a.test_id=p_test_id and a.status in ('in_progress','submitted');
+  base_limit := 1 + coalesce(t.reattempt_limit,0);
 
-  IF t.release_at > now() THEN
-    RAISE EXCEPTION 'This test has not started yet.';
-  END IF;
+  if used_count >= base_limit then
+    select g.id,g.remaining into grant_id,grant_remaining
+    from public.attempt_grants g
+    where g.user_id=v_uid and g.test_id=p_test_id and g.remaining>0
+    order by g.created_at asc, g.id asc limit 1 for update;
+    if grant_id is null then
+      raise exception 'Attempt limit reached. This paper allows % total attempt(s).', base_limit;
+    end if;
+    update public.attempt_grants set remaining=remaining-1 where id=grant_id;
+  end if;
 
-  IF EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = v_uid AND COALESCE(blocked, false)
-  ) THEN
-    RAISE EXCEPTION 'Your student account is blocked. You cannot start a new test.';
-  END IF;
+  expires := started + (coalesce(t.duration_minutes,180) * interval '1 minute');
+  perform set_config('app.authorized_attempt_start','1',true);
+  insert into public.attempts(
+    user_id,test_id,status,max_score,started_at,created_at,expires_at,
+    duration_minutes_snapshot,total_questions_snapshot,positive_marks_snapshot,
+    negative_mcq_snapshot,negative_numerical_snapshot
+  ) values (
+    v_uid,p_test_id,'in_progress',coalesce(t.total_marks,t.total_questions*coalesce(t.positive_marks,4)),
+    started,started,expires,coalesce(t.duration_minutes,180),t.total_questions,
+    coalesce(t.positive_marks,4),coalesce(t.negative_mcq,1),coalesce(t.negative_numerical,1)
+  ) returning attempts.id into new_id;
 
-  -- Resume an existing live attempt instead of creating a duplicate.
-  SELECT *
-  INTO a
-  FROM public.attempts
-  WHERE user_id = v_uid
-    AND test_id = p_test_id
-    AND status = 'in_progress'
-  ORDER BY created_at DESC, id DESC
-  LIMIT 1
-  FOR UPDATE;
+  return query select new_id,p_test_id,started,expires,coalesce(t.duration_minutes,180),
+    t.total_questions,coalesce(t.positive_marks,4),coalesce(t.negative_mcq,1),
+    coalesce(t.negative_numerical,1),coalesce(t.total_marks,t.total_questions*coalesce(t.positive_marks,4));
+end; $$;
+grant execute on function public.start_test_attempt(bigint) to authenticated;
 
-  IF FOUND THEN
-    IF a.expires_at IS NOT NULL AND a.expires_at <= now() THEN
-      UPDATE public.attempts
-      SET status = 'abandoned',
-          submitted_at = COALESCE(submitted_at, now()),
-          time_taken_seconds = GREATEST(
-            0,
-            EXTRACT(
-              EPOCH FROM (
-                LEAST(now(), COALESCE(a.expires_at, now())) - a.started_at
-              )
-            )::integer
-          )
-      WHERE id = a.id
-      RETURNING * INTO a;
-    ELSE
-      RETURN QUERY
-      SELECT
-        a.id,
-        a.test_id,
-        a.started_at,
-        a.expires_at,
-        COALESCE(a.duration_minutes_snapshot, t.duration_minutes, 180),
-        COALESCE(a.total_questions_snapshot, t.total_questions),
-        COALESCE(a.positive_marks_snapshot, t.positive_marks, 4),
-        COALESCE(a.negative_mcq_snapshot, t.negative_mcq, 1),
-        COALESCE(a.negative_numerical_snapshot, t.negative_numerical, 1),
-        COALESCE(a.max_score, t.total_marks, t.total_questions * COALESCE(t.positive_marks,4));
-      RETURN;
-    END IF;
-  END IF;
+-- Prevent direct client INSERT from bypassing the server policy.
+create or replace function public.guard_test_attempt_limit()
+returns trigger language plpgsql security definer set search_path=public as $$
+declare lim integer; used integer;
+begin
+  if current_setting('app.authorized_attempt_start',true)='1' then return new; end if;
+  select 1+coalesce(reattempt_limit,0) into lim from public.tests where id=new.test_id;
+  select count(*) into used from public.attempts where user_id=new.user_id and test_id=new.test_id and status in ('in_progress','submitted');
+  if used >= coalesce(lim,1) then raise exception 'Attempt creation must use the secure start-test flow.'; end if;
+  return new;
+end; $$;
+create trigger trg_guard_test_attempt_limit before insert on public.attempts for each row execute function public.guard_test_attempt_limit();
 
-  SELECT count(*)
-  INTO used_count
-  FROM public.attempts
-  WHERE user_id = v_uid
-    AND test_id = p_test_id
-    AND status IN ('in_progress', 'submitted');
+-- ---------- IMMUTABLE TEST SETTINGS AFTER FIRST ATTEMPT ----------
+create or replace function public.guard_test_version_changes()
+returns trigger language plpgsql security definer set search_path=public as $$
+declare n integer;
+begin
+  select count(*) into n from public.attempts where test_id=old.id;
+  if n>0 and (
+    new.duration_minutes is distinct from old.duration_minutes or
+    new.total_questions is distinct from old.total_questions or
+    new.total_marks is distinct from old.total_marks or
+    new.positive_marks is distinct from old.positive_marks or
+    new.negative_mcq is distinct from old.negative_mcq or
+    new.negative_numerical is distinct from old.negative_numerical or
+    new.paper_url is distinct from old.paper_url
+  ) then
+    raise exception 'This test already has attempts. Scoring settings and question paper are locked. Create a new test/version instead.';
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_guard_test_version_changes on public.tests;
+create trigger trg_guard_test_version_changes before update on public.tests for each row execute function public.guard_test_version_changes();
 
-  base_limit := 1 + COALESCE(t.reattempt_limit, 0);
+-- ---------- ANSWER AUTOSAVE ----------
+create or replace function public.save_attempt_answers(p_attempt_id uuid,p_answers jsonb)
+returns boolean language plpgsql security definer set search_path=public as $$
+declare a public.attempts%rowtype; row jsonb;
+begin
+  select * into a from public.attempts where id=p_attempt_id and user_id=auth.uid() for update;
+  if not found then raise exception 'Attempt not found.'; end if;
+  if a.status <> 'in_progress' then raise exception 'This attempt is already closed.'; end if;
+  if a.expires_at is not null and a.expires_at <= now() then raise exception 'The exam time has expired.'; end if;
 
-  IF used_count >= base_limit THEN
-    SELECT g.id
-    INTO grant_id
-    FROM public.attempt_grants g
-    WHERE g.user_id = v_uid
-      AND g.test_id = p_test_id
-      AND g.remaining > 0
-    ORDER BY g.created_at ASC, g.id ASC
-    LIMIT 1
-    FOR UPDATE;
+  for row in select * from jsonb_array_elements(coalesce(p_answers,'[]'::jsonb)) loop
+    insert into public.answers(attempt_id,question_no,response,marked_for_review,answered_at)
+    values(a.id,(row->>'question_no')::integer,nullif(row->>'response',''),coalesce((row->>'marked_for_review')::boolean,false),case when nullif(row->>'response','') is null then null else now() end)
+    on conflict(attempt_id,question_no) do update set
+      response=excluded.response,
+      marked_for_review=excluded.marked_for_review,
+      answered_at=excluded.answered_at;
+  end loop;
+  return true;
+end; $$;
+grant execute on function public.save_attempt_answers(uuid,jsonb) to authenticated;
 
-    IF grant_id IS NULL THEN
-      RAISE EXCEPTION 'Attempt limit reached. This paper allows % total attempt(s).', base_limit;
-    END IF;
-
-    UPDATE public.attempt_grants
-    SET remaining = remaining - 1
-    WHERE id = grant_id;
-  END IF;
-
-  started := now();
-  v_duration := GREATEST(COALESCE(t.duration_minutes, 180), 1);
-  v_positive := COALESCE(t.positive_marks, 4);
-  v_negative_mcq := COALESCE(t.negative_mcq, 1);
-  v_negative_num := COALESCE(t.negative_numerical, 1);
-  v_max := COALESCE(t.total_marks, t.total_questions * v_positive);
-  expires := started + make_interval(mins => v_duration);
-
-  PERFORM set_config('app.authorized_attempt_start', '1', true);
-
-  INSERT INTO public.attempts (
-    user_id,
-    test_id,
-    started_at,
-    created_at,
-    status,
-    max_score,
-    score,
-    correct_count,
-    incorrect_count,
-    unanswered_count,
-    time_taken_seconds,
-    expires_at,
-    duration_minutes_snapshot,
-    total_questions_snapshot,
-    positive_marks_snapshot,
-    negative_mcq_snapshot,
-    negative_numerical_snapshot
-  )
-  VALUES (
-    v_uid,
-    p_test_id,
-    started,
-    started,
-    'in_progress',
-    v_max,
-    NULL,
-    0,
-    0,
-    t.total_questions,
-    0,
-    expires,
-    v_duration,
-    t.total_questions,
-    v_positive,
-    v_negative_mcq,
-    v_negative_num
-  )
-  RETURNING attempts.id INTO new_attempt_id;
-
-  RETURN QUERY
-  SELECT
-    new_attempt_id,
-    p_test_id,
-    started,
-    expires,
-    v_duration,
-    t.total_questions,
-    v_positive,
-    v_negative_mcq,
-    v_negative_num,
-    v_max;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.start_test_attempt(bigint) TO authenticated;
-
--- ------------------------------------------------------------
--- 6. Prevent direct client inserts from bypassing attempt limits
--- ------------------------------------------------------------
-DROP TRIGGER IF EXISTS trg_guard_test_attempt_limit ON public.attempts;
-
-CREATE OR REPLACE FUNCTION public.guard_test_attempt_limit()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  lim integer;
-  used integer;
-BEGIN
-  IF current_setting('app.authorized_attempt_start', true) = '1' THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.user_id IS DISTINCT FROM auth.uid() THEN
-    RAISE EXCEPTION 'Attempt must belong to the signed-in student.';
-  END IF;
-
-  SELECT 1 + COALESCE(reattempt_limit, 0)
-  INTO lim
-  FROM public.tests
-  WHERE id = NEW.test_id;
-
-  SELECT count(*)
-  INTO used
-  FROM public.attempts
-  WHERE user_id = NEW.user_id
-    AND test_id = NEW.test_id
-    AND status IN ('in_progress', 'submitted');
-
-  IF used >= COALESCE(lim, 1) THEN
-    RAISE EXCEPTION 'Attempt creation must use the secure start-test flow.';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_guard_test_attempt_limit
-BEFORE INSERT ON public.attempts
-FOR EACH ROW
-EXECUTE FUNCTION public.guard_test_attempt_limit();
-
--- ------------------------------------------------------------
--- 7. Lock scoring/paper settings after first attempt
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.guard_test_version_changes()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE n integer;
-BEGIN
-  SELECT count(*) INTO n
-  FROM public.attempts
-  WHERE test_id = OLD.id;
-
-  IF n > 0 AND (
-    NEW.duration_minutes IS DISTINCT FROM OLD.duration_minutes OR
-    NEW.total_questions IS DISTINCT FROM OLD.total_questions OR
-    NEW.total_marks IS DISTINCT FROM OLD.total_marks OR
-    NEW.positive_marks IS DISTINCT FROM OLD.positive_marks OR
-    NEW.negative_mcq IS DISTINCT FROM OLD.negative_mcq OR
-    NEW.negative_numerical IS DISTINCT FROM OLD.negative_numerical OR
-    NEW.paper_url IS DISTINCT FROM OLD.paper_url
-  ) THEN
-    RAISE EXCEPTION
-      'This test already has attempts. Scoring settings and question paper are locked.';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_guard_test_version_changes ON public.tests;
-
-CREATE TRIGGER trg_guard_test_version_changes
-BEFORE UPDATE ON public.tests
-FOR EACH ROW
-EXECUTE FUNCTION public.guard_test_version_changes();
-
--- ------------------------------------------------------------
--- 8. Server answer autosave
--- ------------------------------------------------------------
-CREATE FUNCTION public.save_attempt_answers(
-  p_attempt_id bigint,
-  p_answers jsonb
+-- ---------- SERVER RESUME ----------
+create or replace function public.get_attempt_resume(p_attempt_id uuid)
+returns table(
+  id uuid,test_id bigint,status text,started_at timestamptz,expires_at timestamptz,
+  duration_minutes integer,total_questions integer,positive_marks numeric,negative_mcq numeric,
+  negative_numerical numeric,answers jsonb
 )
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  a public.attempts%ROWTYPE;
-  row jsonb;
-BEGIN
-  SELECT *
-  INTO a
-  FROM public.attempts
-  WHERE id = p_attempt_id
-    AND user_id = auth.uid()
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Attempt not found.';
-  END IF;
-
-  IF a.status <> 'in_progress' THEN
-    RAISE EXCEPTION 'This attempt is already closed.';
-  END IF;
-
-  IF a.expires_at IS NOT NULL AND a.expires_at <= now() THEN
-    RAISE EXCEPTION 'The exam time has expired.';
-  END IF;
-
-  FOR row IN
-    SELECT * FROM jsonb_array_elements(COALESCE(p_answers, '[]'::jsonb))
-  LOOP
-    INSERT INTO public.answers(
-      attempt_id, question_no, response, marked_for_review, answered_at
-    )
-    VALUES (
-      a.id,
-      (row->>'question_no')::integer,
-      NULLIF(row->>'response', ''),
-      COALESCE((row->>'marked_for_review')::boolean, false),
-      CASE
-        WHEN NULLIF(row->>'response', '') IS NULL THEN NULL
-        ELSE now()
-      END
-    )
-    ON CONFLICT (attempt_id, question_no)
-    DO UPDATE SET
-      response = EXCLUDED.response,
-      marked_for_review = EXCLUDED.marked_for_review,
-      answered_at = EXCLUDED.answered_at;
-  END LOOP;
-
-  RETURN true;
-END;
+language sql security definer set search_path=public stable as $$
+select a.id,a.test_id,a.status,a.started_at,a.expires_at,a.duration_minutes_snapshot,
+       a.total_questions_snapshot,a.positive_marks_snapshot,a.negative_mcq_snapshot,
+       a.negative_numerical_snapshot,
+       coalesce((select jsonb_agg(jsonb_build_object('question_no',x.question_no,'response',x.response,'marked_for_review',x.marked_for_review) order by x.question_no) from public.answers x where x.attempt_id=a.id),'[]'::jsonb)
+from public.attempts a
+where a.id=p_attempt_id and a.user_id=auth.uid() and a.status='in_progress';
 $$;
+grant execute on function public.get_attempt_resume(uuid) to authenticated;
 
-GRANT EXECUTE ON FUNCTION public.save_attempt_answers(bigint, jsonb) TO authenticated;
+-- ---------- ATOMIC SUBMISSION ----------
+create or replace function public.submit_test_attempt(p_attempt_id uuid,p_answers jsonb)
+returns table(id uuid,status text,submitted_at timestamptz,time_taken_seconds bigint)
+language plpgsql security definer set search_path=public as $$
+declare a public.attempts%rowtype; submitted timestamptz:=now(); elapsed bigint; row jsonb;
+begin
+  select * into a from public.attempts where id=p_attempt_id and user_id=auth.uid() for update;
+  if not found then raise exception 'Attempt not found.'; end if;
+  if a.status='submitted' then return query select a.id,a.status,a.submitted_at,a.time_taken_seconds; return; end if;
+  if a.status <> 'in_progress' then raise exception 'This attempt cannot be submitted.'; end if;
 
--- ------------------------------------------------------------
--- 9. Server resume
--- ------------------------------------------------------------
-CREATE FUNCTION public.get_attempt_resume(p_attempt_id bigint)
-RETURNS TABLE(
-  id bigint,
-  test_id bigint,
-  status text,
-  started_at timestamptz,
-  expires_at timestamptz,
-  duration_minutes integer,
-  total_questions integer,
-  positive_marks numeric,
-  negative_mcq numeric,
-  negative_numerical numeric,
-  answers jsonb
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT
-    a.id,
-    a.test_id,
-    a.status,
-    a.started_at,
-    a.expires_at,
-    COALESCE(a.duration_minutes_snapshot, t.duration_minutes),
-    COALESCE(a.total_questions_snapshot, t.total_questions),
-    COALESCE(a.positive_marks_snapshot, t.positive_marks),
-    COALESCE(a.negative_mcq_snapshot, t.negative_mcq),
-    COALESCE(a.negative_numerical_snapshot, t.negative_numerical),
-    COALESCE(
-      (
-        SELECT jsonb_agg(
-          jsonb_build_object(
-            'question_no', x.question_no,
-            'response', x.response,
-            'marked_for_review', x.marked_for_review
-          )
-          ORDER BY x.question_no
-        )
-        FROM public.answers x
-        WHERE x.attempt_id = a.id
-      ),
-      '[]'::jsonb
-    )
-  FROM public.attempts a
-  JOIN public.tests t ON t.id = a.test_id
-  WHERE a.id = p_attempt_id
-    AND a.user_id = auth.uid()
-    AND a.status = 'in_progress';
+  -- Final answer write intentionally does NOT reject an expired attempt.
+  -- The server records the answers and caps elapsed time at the authoritative expiry.
+  for row in select * from jsonb_array_elements(coalesce(p_answers,'[]'::jsonb)) loop
+    insert into public.answers(attempt_id,question_no,response,marked_for_review,answered_at)
+    values(a.id,(row->>'question_no')::integer,nullif(row->>'response',''),coalesce((row->>'marked_for_review')::boolean,false),case when nullif(row->>'response','') is null then null else now() end)
+    on conflict(attempt_id,question_no) do update set response=excluded.response,marked_for_review=excluded.marked_for_review,answered_at=excluded.answered_at;
+  end loop;
+  elapsed := greatest(0,extract(epoch from (least(now(),coalesce(a.expires_at,now()))-a.started_at))::bigint);
+  update public.attempts set status='submitted',submitted_at=submitted,unanswered_count=greatest(0,coalesce(a.total_questions_snapshot,0)-(select count(*) from public.answers where attempt_id=a.id and response is not null and response<>'')),time_taken_seconds=elapsed where id=a.id;
+  return query select a.id,'submitted'::text,submitted,elapsed;
+end; $$;
+grant execute on function public.submit_test_attempt(uuid,jsonb) to authenticated;
+
+-- ---------- ADMIN HELPERS ----------
+create or replace function public.admin_update_student(p_user_id uuid,p_name text,p_blocked boolean)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  update public.profiles set name=trim(p_name),blocked=coalesce(p_blocked,false) where id=p_user_id;
+  if not found then raise exception 'Student profile not found'; end if;
+  insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'student_update','student',p_user_id::text,jsonb_build_object('name',p_name,'blocked',p_blocked));
+  return true;
+end; $$;
+grant execute on function public.admin_update_student(uuid,text,boolean) to authenticated;
+
+create or replace function public.admin_grant_attempt(p_user_id uuid,p_test_id bigint,p_count integer default 1,p_note text default null)
+returns integer language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_count<1 or p_count>20 then raise exception 'Grant must be between 1 and 20 attempts.'; end if;
+  insert into public.attempt_grants(user_id,test_id,remaining,note) values(p_user_id,p_test_id,p_count,p_note);
+  insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'grant_attempt','student',p_user_id::text,jsonb_build_object('test_id',p_test_id,'count',p_count,'note',p_note));
+  return p_count;
+end; $$;
+grant execute on function public.admin_grant_attempt(uuid,bigint,integer,text) to authenticated;
+
+create or replace function public.admin_force_submit(p_attempt_id uuid,p_reason text default null)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  update public.attempts set status='submitted',submitted_at=coalesce(submitted_at,now()),time_taken_seconds=greatest(0,extract(epoch from (least(now(),coalesce(expires_at,now()))-started_at))::bigint) where id=p_attempt_id and status='in_progress';
+  insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'force_submit','attempt',p_attempt_id::text,jsonb_build_object('reason',p_reason));
+  return true;
+end; $$;
+grant execute on function public.admin_force_submit(uuid,text) to authenticated;
+
+create or replace function public.admin_invalidate_attempt(p_attempt_id uuid,p_reason text default null)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  update public.attempts set status='invalidated' where id=p_attempt_id;
+  insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'invalidate_attempt','attempt',p_attempt_id::text,jsonb_build_object('reason',p_reason));
+  return true;
+end; $$;
+grant execute on function public.admin_invalidate_attempt(uuid,text) to authenticated;
+
+create or replace function public.admin_archive_test(p_test_id bigint)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  update public.tests set archived=true,enabled=false where id=p_test_id;
+  insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'archive_test','test',p_test_id::text,'{}'::jsonb);
+  return true;
+end; $$;
+grant execute on function public.admin_archive_test(bigint) to authenticated;
+
+create or replace function public.admin_test_stats(p_test_id bigint)
+returns table(attempts bigint,submitted bigint,in_progress bigint,invalidated bigint,avg_score numeric,median_score numeric,highest_score numeric,avg_time_seconds numeric)
+language sql security definer set search_path=public stable as $$
+select count(*),count(*) filter(where status='submitted'),count(*) filter(where status='in_progress'),count(*) filter(where status='invalidated'),avg(score) filter(where status='submitted'),percentile_cont(.5) within group(order by score) filter(where status='submitted'),max(score) filter(where status='submitted'),avg(time_taken_seconds) filter(where status='submitted') from public.attempts where test_id=p_test_id and public.is_admin();
 $$;
+grant execute on function public.admin_test_stats(bigint) to authenticated;
 
-GRANT EXECUTE ON FUNCTION public.get_attempt_resume(bigint) TO authenticated;
-
--- ------------------------------------------------------------
--- 10. Atomic submission
--- ------------------------------------------------------------
-CREATE FUNCTION public.submit_test_attempt(
-  p_attempt_id bigint,
-  p_answers jsonb
-)
-RETURNS TABLE(
-  id bigint,
-  status text,
-  submitted_at timestamptz,
-  time_taken_seconds bigint
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  a public.attempts%ROWTYPE;
-  submitted timestamptz := now();
-  elapsed bigint;
-  row jsonb;
-BEGIN
-  SELECT *
-  INTO a
-  FROM public.attempts
-  WHERE id = p_attempt_id
-    AND user_id = auth.uid()
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Attempt not found.';
-  END IF;
-
-  IF a.status = 'submitted' THEN
-    RETURN QUERY
-    SELECT a.id, a.status, a.submitted_at, COALESCE(a.time_taken_seconds,0)::bigint;
-    RETURN;
-  END IF;
-
-  IF a.status <> 'in_progress' THEN
-    RAISE EXCEPTION 'This attempt cannot be submitted.';
-  END IF;
-
-  FOR row IN
-    SELECT * FROM jsonb_array_elements(COALESCE(p_answers, '[]'::jsonb))
-  LOOP
-    INSERT INTO public.answers(
-      attempt_id, question_no, response, marked_for_review, answered_at
-    )
-    VALUES (
-      a.id,
-      (row->>'question_no')::integer,
-      NULLIF(row->>'response', ''),
-      COALESCE((row->>'marked_for_review')::boolean, false),
-      CASE
-        WHEN NULLIF(row->>'response', '') IS NULL THEN NULL
-        ELSE now()
-      END
-    )
-    ON CONFLICT (attempt_id, question_no)
-    DO UPDATE SET
-      response = EXCLUDED.response,
-      marked_for_review = EXCLUDED.marked_for_review,
-      answered_at = EXCLUDED.answered_at;
-  END LOOP;
-
-  elapsed := GREATEST(
-    0,
-    EXTRACT(
-      EPOCH FROM (
-        LEAST(now(), COALESCE(a.expires_at, now())) - a.started_at
-      )
-    )::bigint
-  );
-
-  UPDATE public.attempts
-  SET
-    status = 'submitted',
-    submitted_at = submitted,
-    unanswered_count = GREATEST(
-      0,
-      COALESCE(a.total_questions_snapshot, t.total_questions, 0) -
-      (
-        SELECT count(*)
-        FROM public.answers
-        WHERE attempt_id = a.id
-          AND response IS NOT NULL
-          AND response <> ''
-      )
-    ),
-    time_taken_seconds = elapsed
-  FROM public.tests t
-  WHERE public.attempts.id = a.id
-    AND t.id = a.test_id;
-
-  RETURN QUERY
-  SELECT a.id, 'submitted'::text, submitted, elapsed;
-END;
+-- ---------- LEADERBOARD: FIRST ATTEMPT ONLY, RE-ATTEMPTS HIDDEN ----------
+create or replace function public.get_leaderboard(p_test_id bigint default null)
+returns table(rank bigint,user_id uuid,name text,photo_url text,score numeric,max_score numeric,correct_count bigint,time_taken_seconds bigint,tests_taken bigint,is_me boolean)
+language sql security definer set search_path=public stable as $$
+with ranked as(
+ select a.*,row_number() over(partition by a.user_id,a.test_id order by a.submitted_at asc nulls last,a.created_at asc,a.id asc) rn
+ from public.attempts a join public.tests t on t.id=a.test_id
+ where a.status='submitted' and a.score is not null and t.enabled and not coalesce(t.archived,false) and coalesce(t.leaderboard_enabled,true) and exists(select 1 from public.test_keys k where k.test_id=a.test_id) and (p_test_id is null or a.test_id=p_test_id)
+), firsts as(select * from ranked where rn=1), agg as(select user_id,sum(score) score,sum(max_score) max_score,sum(coalesce(correct_count,0)) cc,sum(coalesce(time_taken_seconds,0)) tt,count(*) n from firsts group by user_id)
+select rank() over(order by g.score desc,g.tt asc),g.user_id,coalesce(nullif(p.name,''),'Student'),p.photo_url,g.score,g.max_score,g.cc,g.tt,g.n,g.user_id=auth.uid() from agg g left join public.profiles p on p.id=g.user_id order by 1,g.user_id;
 $$;
+grant execute on function public.get_leaderboard(bigint) to authenticated;
 
-GRANT EXECUTE ON FUNCTION public.submit_test_attempt(bigint, jsonb) TO authenticated;
-
--- ------------------------------------------------------------
--- 11. Admin student update
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.admin_update_student(
-  p_user_id uuid,
-  p_name text,
-  p_blocked boolean
-)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  UPDATE public.profiles
-  SET
-    name = trim(p_name),
-    blocked = COALESCE(p_blocked, false)
-  WHERE id = p_user_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Student profile not found';
-  END IF;
-
-  INSERT INTO public.admin_audit_log(
-    admin_user_id, action, target_type, target_id, details
-  )
-  VALUES(
-    auth.uid(),
-    'student_update',
-    'student',
-    p_user_id::text,
-    jsonb_build_object('name', p_name, 'blocked', p_blocked)
-  );
-
-  RETURN true;
-END;
+-- ---------- ADMIN AUDIT READ ----------
+create or replace function public.admin_audit(limit_count integer default 100)
+returns table(id bigint,admin_user_id uuid,action text,target_type text,target_id text,details jsonb,created_at timestamptz)
+language sql security definer set search_path=public stable as $$
+select l.id,l.admin_user_id,l.action,l.target_type,l.target_id,l.details,l.created_at from public.admin_audit_log l where public.is_admin() order by l.created_at desc limit greatest(1,least(limit_count,500));
 $$;
-
-GRANT EXECUTE ON FUNCTION public.admin_update_student(uuid,text,boolean) TO authenticated;
-
--- ------------------------------------------------------------
--- 12. Extra attempts
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.admin_grant_attempt(
-  p_user_id uuid,
-  p_test_id bigint,
-  p_count integer DEFAULT 1,
-  p_note text DEFAULT NULL
-)
-RETURNS integer
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  IF p_count < 1 OR p_count > 20 THEN
-    RAISE EXCEPTION 'Grant must be between 1 and 20 attempts.';
-  END IF;
-
-  INSERT INTO public.attempt_grants(user_id,test_id,remaining,note)
-  VALUES(p_user_id,p_test_id,p_count,p_note);
-
-  INSERT INTO public.admin_audit_log(
-    admin_user_id,action,target_type,target_id,details
-  )
-  VALUES(
-    auth.uid(),
-    'grant_attempt',
-    'student',
-    p_user_id::text,
-    jsonb_build_object(
-      'test_id',p_test_id,
-      'count',p_count,
-      'note',p_note
-    )
-  );
-
-  RETURN p_count;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_grant_attempt(uuid,bigint,integer,text) TO authenticated;
-
--- ------------------------------------------------------------
--- 13. Admin force submit
--- ------------------------------------------------------------
-CREATE FUNCTION public.admin_force_submit(
-  p_attempt_id bigint,
-  p_reason text DEFAULT NULL
-)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  UPDATE public.attempts a
-  SET
-    status = 'submitted',
-    submitted_at = COALESCE(a.submitted_at, now()),
-    unanswered_count = GREATEST(
-      0,
-      COALESCE(a.total_questions_snapshot, t.total_questions, 0) -
-      (
-        SELECT count(*)
-        FROM public.answers x
-        WHERE x.attempt_id = a.id
-          AND x.response IS NOT NULL
-          AND x.response <> ''
-      )
-    ),
-    time_taken_seconds = GREATEST(
-      0,
-      EXTRACT(
-        EPOCH FROM (
-          LEAST(now(), COALESCE(a.expires_at, now())) - a.started_at
-        )
-      )::bigint
-    )
-  FROM public.tests t
-  WHERE a.id = p_attempt_id
-    AND t.id = a.test_id
-    AND a.status = 'in_progress';
-
-  INSERT INTO public.admin_audit_log(
-    admin_user_id,action,target_type,target_id,details
-  )
-  VALUES(
-    auth.uid(),
-    'force_submit',
-    'attempt',
-    p_attempt_id::text,
-    jsonb_build_object('reason',p_reason)
-  );
-
-  RETURN true;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_force_submit(bigint,text) TO authenticated;
-
--- ------------------------------------------------------------
--- 14. Admin invalidate = ABANDONED
--- The existing database CHECK constraint only permits:
--- in_progress / submitted / abandoned.
--- ------------------------------------------------------------
-CREATE FUNCTION public.admin_invalidate_attempt(
-  p_attempt_id bigint,
-  p_reason text DEFAULT NULL
-)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  UPDATE public.attempts
-  SET
-    status = 'abandoned',
-    submitted_at = COALESCE(submitted_at, now())
-  WHERE id = p_attempt_id
-    AND status <> 'submitted';
-
-  INSERT INTO public.admin_audit_log(
-    admin_user_id,action,target_type,target_id,details
-  )
-  VALUES(
-    auth.uid(),
-    'invalidate_attempt',
-    'attempt',
-    p_attempt_id::text,
-    jsonb_build_object(
-      'reason',p_reason,
-      'stored_status','abandoned'
-    )
-  );
-
-  RETURN true;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_invalidate_attempt(bigint,text) TO authenticated;
-
--- ------------------------------------------------------------
--- 15. Archive
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.admin_archive_test(p_test_id bigint)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  UPDATE public.tests
-  SET archived = true, enabled = false
-  WHERE id = p_test_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Test not found';
-  END IF;
-
-  INSERT INTO public.admin_audit_log(
-    admin_user_id,action,target_type,target_id,details
-  )
-  VALUES(
-    auth.uid(),'archive_test','test',p_test_id::text,'{}'::jsonb
-  );
-
-  RETURN true;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_archive_test(bigint) TO authenticated;
-
--- ------------------------------------------------------------
--- 16. Analytics
--- Existing attempts never get an unsupported "invalidated" status;
--- abandoned is the canonical closed/non-ranked state.
--- ------------------------------------------------------------
-CREATE FUNCTION public.admin_test_stats(p_test_id bigint)
-RETURNS TABLE(
-  attempts bigint,
-  submitted bigint,
-  in_progress bigint,
-  invalidated bigint,
-  avg_score numeric,
-  median_score numeric,
-  highest_score numeric,
-  avg_time_seconds numeric
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT
-    count(*),
-    count(*) FILTER (WHERE status='submitted'),
-    count(*) FILTER (WHERE status='in_progress'),
-    count(*) FILTER (WHERE status='abandoned'),
-    avg(score) FILTER (WHERE status='submitted'),
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY score)
-      FILTER (WHERE status='submitted'),
-    max(score) FILTER (WHERE status='submitted'),
-    avg(time_taken_seconds) FILTER (WHERE status='submitted')
-  FROM public.attempts
-  WHERE test_id = p_test_id
-    AND public.is_admin();
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_test_stats(bigint) TO authenticated;
-
--- ------------------------------------------------------------
--- 17. Leaderboard — first submitted attempt only
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_leaderboard(
-  p_test_id bigint DEFAULT NULL
-)
-RETURNS TABLE(
-  rank bigint,
-  user_id uuid,
-  name text,
-  photo_url text,
-  score numeric,
-  max_score numeric,
-  correct_count bigint,
-  time_taken_seconds bigint,
-  tests_taken bigint,
-  is_me boolean
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  WITH ranked AS (
-    SELECT
-      a.*,
-      row_number() OVER (
-        PARTITION BY a.user_id,a.test_id
-        ORDER BY a.submitted_at ASC NULLS LAST,a.created_at ASC,a.id ASC
-      ) rn
-    FROM public.attempts a
-    JOIN public.tests t ON t.id=a.test_id
-    WHERE a.status='submitted'
-      AND a.score IS NOT NULL
-      AND t.enabled
-      AND NOT COALESCE(t.archived,false)
-      AND COALESCE(t.leaderboard_enabled,true)
-      AND EXISTS (
-        SELECT 1 FROM public.test_keys k WHERE k.test_id=a.test_id
-      )
-      AND (p_test_id IS NULL OR a.test_id=p_test_id)
-  ),
-  firsts AS (
-    SELECT * FROM ranked WHERE rn=1
-  ),
-  agg AS (
-    SELECT
-      user_id,
-      sum(score) score,
-      sum(max_score) max_score,
-      sum(COALESCE(correct_count,0)) cc,
-      sum(COALESCE(time_taken_seconds,0)) tt,
-      count(*) n
-    FROM firsts
-    GROUP BY user_id
-  )
-  SELECT
-    rank() OVER (ORDER BY g.score DESC,g.tt ASC),
-    g.user_id,
-    COALESCE(NULLIF(p.name,''),'Student'),
-    p.photo_url,
-    g.score,
-    g.max_score,
-    g.cc,
-    g.tt,
-    g.n,
-    g.user_id=auth.uid()
-  FROM agg g
-  LEFT JOIN public.profiles p ON p.id=g.user_id
-  ORDER BY 1,g.user_id;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_leaderboard(bigint) TO authenticated;
-
--- ------------------------------------------------------------
--- 18. Audit reader
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.admin_audit(
-  limit_count integer DEFAULT 100
-)
-RETURNS TABLE(
-  id bigint,
-  admin_user_id uuid,
-  action text,
-  target_type text,
-  target_id text,
-  details jsonb,
-  created_at timestamptz
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT
-    l.id,
-    l.admin_user_id,
-    l.action,
-    l.target_type,
-    l.target_id,
-    l.details,
-    l.created_at
-  FROM public.admin_audit_log l
-  WHERE public.is_admin()
-  ORDER BY l.created_at DESC
-  LIMIT GREATEST(1,LEAST(COALESCE(limit_count,100),500));
-$$;
-
-GRANT EXECUTE ON FUNCTION public.admin_audit(integer) TO authenticated;
-
--- ------------------------------------------------------------
--- 19. Answer-key table + secure evaluation
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.test_keys(
-  test_id bigint PRIMARY KEY REFERENCES public.tests(id) ON DELETE CASCADE,
-  keys text[] NOT NULL,
-  published_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.test_keys ENABLE ROW LEVEL SECURITY;
-
-CREATE OR REPLACE FUNCTION public.guard_scores()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF current_setting('app.eval', true) IS DISTINCT FROM '1' THEN
-    NEW.score := OLD.score;
-    NEW.correct_count := OLD.correct_count;
-    NEW.incorrect_count := OLD.incorrect_count;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_guard_scores ON public.attempts;
-
-CREATE TRIGGER trg_guard_scores
-BEFORE UPDATE ON public.attempts
-FOR EACH ROW
-EXECUTE FUNCTION public.guard_scores();
-
-CREATE OR REPLACE FUNCTION public.publish_answer_key(
-  p_test_id bigint,
-  p_key text
-)
-RETURNS integer
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  t public.tests%ROWTYPE;
-  ks text[];
-  per integer;
-  n integer;
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Admins only';
-  END IF;
-
-  SELECT * INTO t FROM public.tests WHERE id=p_test_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Test not found.';
-  END IF;
-
-  SELECT array_agg(
-    CASE upper(x)
-      WHEN 'A' THEN '1'
-      WHEN 'B' THEN '2'
-      WHEN 'C' THEN '3'
-      WHEN 'D' THEN '4'
-      ELSE x
-    END
-  )
-  INTO ks
-  FROM unnest(regexp_split_to_array(trim(p_key),'[\s,;]+')) x
-  WHERE x <> '';
-
-  IF COALESCE(array_length(ks,1),0) <> t.total_questions THEN
-    RAISE EXCEPTION
-      'Key has % answers but the test has % questions',
-      COALESCE(array_length(ks,1),0),
-      t.total_questions;
-  END IF;
-
-  INSERT INTO public.test_keys(test_id,keys)
-  VALUES(p_test_id,ks)
-  ON CONFLICT(test_id)
-  DO UPDATE SET keys=EXCLUDED.keys,published_at=now();
-
-  PERFORM set_config('app.eval','1',true);
-
-  SELECT GREATEST(COALESCE(t.total_questions,1) / 3,1)
-  INTO per;
-
-  WITH evaluated AS (
-    SELECT
-      an.attempt_id,
-      sum(
-        CASE WHEN (
-          CASE
-            WHEN ((an.question_no-1) % per) >= per-5 THEN
-              CASE
-                WHEN an.response ~ '^-?\d+(\.\d+)?$'
-                 AND ks[an.question_no] ~ '^-?\d+(\.\d+)?$'
-                THEN abs(an.response::numeric-ks[an.question_no]::numeric) < 1e-9
-                ELSE false
-              END
-            ELSE an.response=ks[an.question_no]
-          END
-        ) THEN 1 ELSE 0 END
-      ) AS c,
-      sum(
-        CASE
-          WHEN an.response IS NOT NULL
-           AND an.response <> ''
-           AND NOT (
-             CASE
-               WHEN ((an.question_no-1) % per) >= per-5 THEN
-                 CASE
-                   WHEN an.response ~ '^-?\d+(\.\d+)?$'
-                    AND ks[an.question_no] ~ '^-?\d+(\.\d+)?$'
-                   THEN abs(an.response::numeric-ks[an.question_no]::numeric) < 1e-9
-                   ELSE false
-                 END
-               ELSE an.response=ks[an.question_no]
-             END
-           )
-          THEN 1 ELSE 0
-        END
-      ) AS w,
-      sum(
-        CASE
-          WHEN an.response IS NULL OR an.response='' THEN 0
-          WHEN (
-            CASE
-              WHEN ((an.question_no-1) % per) >= per-5 THEN
-                CASE
-                  WHEN an.response ~ '^-?\d+(\.\d+)?$'
-                   AND ks[an.question_no] ~ '^-?\d+(\.\d+)?$'
-                  THEN abs(an.response::numeric-ks[an.question_no]::numeric) < 1e-9
-                  ELSE false
-                END
-              ELSE an.response=ks[an.question_no]
-            END
-          )
-          THEN COALESCE(a.positive_marks_snapshot,t.positive_marks,4)
-          ELSE -(
-            CASE
-              WHEN ((an.question_no-1) % per) >= per-5
-              THEN COALESCE(a.negative_numerical_snapshot,t.negative_numerical,1)
-              ELSE COALESCE(a.negative_mcq_snapshot,t.negative_mcq,1)
-            END
-          )
-        END
-      ) AS sc
-    FROM public.answers an
-    JOIN public.attempts a ON a.id=an.attempt_id
-    JOIN public.tests t ON t.id=a.test_id
-    WHERE a.test_id=p_test_id
-      AND a.status='submitted'
-    GROUP BY an.attempt_id
-  )
-  UPDATE public.attempts a
-  SET
-    score=COALESCE(e.sc,0),
-    correct_count=e.c,
-    incorrect_count=e.w,
-    unanswered_count=GREATEST(
-      0,
-      COALESCE(a.total_questions_snapshot,t.total_questions,0)
-      - COALESCE(e.c,0)
-      - COALESCE(e.w,0)
-    )
-  FROM evaluated e
-  JOIN public.tests t ON t.id=a.test_id
-  WHERE a.id=e.attempt_id;
-
-  GET DIAGNOSTICS n=row_count;
-  RETURN n;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.publish_answer_key(bigint,text) TO authenticated;
-
--- ------------------------------------------------------------
--- 20. Student results
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_my_results()
-RETURNS TABLE(
-  test_id bigint,
-  name text,
-  score numeric,
-  max_score numeric,
-  correct_count int,
-  incorrect_count int,
-  unanswered_count int
-)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path=public
-STABLE
-AS $$
-  SELECT DISTINCT ON (a.test_id)
-    a.test_id,
-    t.name,
-    a.score,
-    a.max_score,
-    a.correct_count,
-    a.incorrect_count,
-    a.unanswered_count
-  FROM public.attempts a
-  JOIN public.tests t ON t.id=a.test_id
-  JOIN public.test_keys k ON k.test_id=a.test_id
-  WHERE a.user_id=auth.uid()
-    AND a.status='submitted'
-    AND a.score IS NOT NULL
-  ORDER BY a.test_id,a.score DESC,a.submitted_at ASC NULLS LAST;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_my_results() TO authenticated;
-
-COMMIT;
+grant execute on function public.admin_audit(integer) to authenticated;
 
 -- ============================================================
--- END. Existing tests/attempts/answers are preserved.
+-- END V10
 -- ============================================================
+
+-- ---------- CORRECT SCORING USES THE ATTEMPT SNAPSHOT ----------
+create or replace function public.publish_answer_key(p_test_id bigint,p_key text)
+returns integer language plpgsql security definer set search_path=public as $$
+declare t public.tests%rowtype; ks text[]; per integer; n integer;
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  select * into t from public.tests where id=p_test_id;
+  if not found then raise exception 'Test not found.'; end if;
+  select array_agg(case upper(x) when 'A' then '1' when 'B' then '2' when 'C' then '3' when 'D' then '4' else x end)
+    into ks from unnest(regexp_split_to_array(trim(p_key),'[\s,;]+')) x where x<>'';
+  if coalesce(array_length(ks,1),0)<>t.total_questions then raise exception 'Key has % answers but the test has % questions',coalesce(array_length(ks,1),0),t.total_questions; end if;
+  insert into public.test_keys(test_id,keys) values(p_test_id,ks) on conflict(test_id) do update set keys=excluded.keys,published_at=now();
+  perform set_config('app.eval','1',true);
+  with g as(
+    select an.attempt_id,
+      sum(case when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) c,
+      sum(case when an.response is not null and an.response<>'' and not (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then 1 else 0 end) w,
+      sum(case when an.response is null or an.response='' then 0 when (case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then case when an.response~'^-?\\d+(\\.\\d+)?$' and ks[an.question_no]~'^-?\\d+(\\.\\d+)?$' then abs(an.response::numeric-ks[an.question_no]::numeric)<1e-9 else false end else an.response=ks[an.question_no] end) then a.positive_marks_snapshot else -(case when ((an.question_no-1)%greatest(coalesce(a.total_questions_snapshot,1)/3,1)) >= greatest(coalesce(a.total_questions_snapshot,1)/3,1)-5 then a.negative_numerical_snapshot else a.negative_mcq_snapshot end) end) sc
+    from public.answers an join public.attempts a on a.id=an.attempt_id
+    where a.test_id=p_test_id and a.status='submitted'
+    group by an.attempt_id
+  )
+  update public.attempts a set score=coalesce(g.sc,0),correct_count=g.c,incorrect_count=g.w from g where a.id=g.attempt_id;
+  get diagnostics n=row_count; return n;
+end; $$;
+grant execute on function public.publish_answer_key(bigint,text) to authenticated;

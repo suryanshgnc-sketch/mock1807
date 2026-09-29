@@ -12,6 +12,14 @@
   function countdown(t){const p=parts(new Date(t.release_at).getTime()-Date.now());return `${p.d}d ${String(p.h).padStart(2,'0')}h ${String(p.m).padStart(2,'0')}m ${String(p.s).padStart(2,'0')}s`}
   function released(t){return new Date(t.release_at).getTime()<=Date.now()}
   function fmtDate(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+  async function resolvePaperUrl(path){
+    const raw=String(path||'').trim();
+    if(!raw) throw new Error('The question paper for this test is not available yet.');
+    if(/^https?:\/\//i.test(raw)) return raw;
+    const {data,error}=await sb.storage.from(BUCKET).createSignedUrl(raw,60*60*8);
+    if(error||!data?.signedUrl) throw (error||new Error('Could not open the question paper.'));
+    return data.signedUrl;
+  }
   function style(){}
   function container(){return $('#backendTests')}
   function tz(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}

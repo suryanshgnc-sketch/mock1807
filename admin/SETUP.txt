@@ -6,7 +6,7 @@ This admin portal supports:
 - Upload answer-key/solutions PDF
 - Store both PDFs in private Supabase Storage
 - Disable/enable tests
-- Archive tests
+- Delete tests
 - View students, attempts and scores
 
 ONE-TIME SUPABASE SETUP
@@ -47,11 +47,3 @@ using (bucket_id = 'test-pdfs' and public.is_admin());
 --- END SQL ---
 
 Do not make the bucket public. The answer key is stored in the private bucket and is not exposed by the student policies.
-
-
---- V10.1 EXISTING DATABASE NOTE ---
-
-For the current MDCCCVII build, run only the root-level
-DB-MIGRATION-EXISTING-V10.1.sql once.
-
-Do not run the old ADMIN-V6/V7 or other legacy SQL files after it.

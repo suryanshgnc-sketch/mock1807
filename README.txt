@@ -1,59 +1,46 @@
-# MDCCCVII TESTS — V10.1 FIXED BUILD
+# MDCCCVII TESTS — V10
 
-This ZIP is the repaired build for the **existing MDCCCVII Supabase database**.
+Production-focused CBT + admin control build.
 
-## IMPORTANT — DATABASE
+## Database setup
 
-Run **ONLY**:
+### Fresh Supabase project
+Run **`RUN-ALL-SQL-V10.sql`** once in Supabase → SQL Editor.
 
-`DB-MIGRATION-EXISTING-V10.1.sql`
+### Existing MDCCCVII database
+Run **`MDCCCVII-DB-V10.sql`** once after your existing setup.
 
-in Supabase → SQL Editor.
+Do not run the files inside `legacy-sql/` for the V10 build; they are retained only for reference.
 
-It is designed for the existing schema where:
+## V10 fixes
 
-- `attempts.id` is **BIGINT**
-- attempt status values are `in_progress`, `submitted`, `abandoned`
-
-It is data-preserving. It does not recreate or delete your tests, attempts, answers, students, scores, or leaderboard data.
-
-The old V10 migration incorrectly treated attempt IDs as UUIDs and attempted to use an unsupported `invalidated` attempt status. This build fixes those mismatches.
-
-### Do NOT run together
-
-Do not run `ADMIN-V6.sql`, `ADMIN-V7.sql`, `KEYS.sql`, `LEADERBOARD.sql`, `SETUP-ALL.sql`, or any other old migration after the fixed migration. They are retained only as historical/reference files.
-
-For convenience, the legacy-named V10 SQL files in this ZIP now contain the same data-safe existing-DB migration, so accidentally opening `MDCCCVII-DB-V10.sql` will not send you back to the broken UUID version.
-
-## What was repaired
-
-- Correct BIGINT attempt RPC signatures.
-- Server-authoritative start/resume/expiry.
-- Existing in-progress attempts resume instead of duplicating.
-- Existing in-progress attempts get an expiry timestamp only when missing.
-- Per-attempt marking/duration snapshots.
-- Reattempt limits.
-- Extra attempt grants.
-- Atomic autosave.
-- Atomic submission.
-- Admin force-submit.
-- Admin invalidate → existing `abandoned` status.
+- Server-authoritative test start and expiry timestamps.
+- Immutable per-attempt snapshot of duration, question count and marking scheme.
+- Server-side answer autosave RPC.
+- Server-side atomic submission RPC.
+- Server resume from Supabase answers/timer state.
+- Expired attempts can still be submitted once, with elapsed time capped by the server.
+- Re-attempt limits enforced server-side.
+- Per-student extra attempt grants.
+- First submitted attempt only is eligible for leaderboard ranking; re-attempts do not create leaderboard entries.
+- Per-test leaderboard enable/disable.
+- Test archiving instead of destructive deletion.
+- Test scoring/question-paper settings lock after the first attempt.
+- Admin force-submit and invalidate-attempt controls.
 - Admin audit log.
-- Admin student block/edit.
-- Test archive.
-- Test analytics.
-- First submitted attempt only on leaderboard.
-- Per-test leaderboard toggle.
-- Existing answer-key evaluation retained.
-- Existing test/attempt data preserved.
+- Admin test analytics and attempt status visibility.
+- PWA install button + manifest + service worker.
+- MDCCCVII branding/favicon/PWA icons.
+- CBT save/connection state indicator.
 
 ## Deployment
 
-1. Upload this website.
-2. Run `DB-MIGRATION-EXISTING-V10.1.sql` once.
-3. Hard refresh the website (`Ctrl+Shift+R`).
-4. Open Control Center.
-5. Test a small paper with start → answer → refresh → resume → submit.
-6. Verify leaderboard/results after publishing the answer key.
+1. Upload the site files to your static host.
+2. Run the SQL above.
+3. Hard refresh once after deployment (`Ctrl+Shift+R`) so the V10 service worker replaces the previous cache.
+4. Sign in as admin and verify the Control Center.
+5. Create a small test and verify start → answer → refresh/resume → submit → result.
 
-The browser timer is only a display. The server's `expires_at` is authoritative.
+## Important
+
+The server is now authoritative for exam time and submission state. The browser timer is only a display.

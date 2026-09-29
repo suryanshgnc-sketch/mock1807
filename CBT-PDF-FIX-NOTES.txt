@@ -1,0 +1,1 @@
+CBT PDF-only stability patch. No database/schema changes. Existing tests, attempts, leaderboard and SQL files are preserved. PDF viewer now uses a browser iframe, supports stored full URLs or Supabase storage paths, and has Reload/Open controls.

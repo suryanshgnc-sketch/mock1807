@@ -87,7 +87,7 @@
  <div id="obar"><div class="exam-title"><b>JEE MAIN</b><span id="liveTestName">LIVE TEST</span></div><div id="tabs"></div><div class="exam-progress"><span id="progressText">0 / 75 answered</span><span id="connectionState" class="connection-state">● ONLINE</span><div><i id="progressBar"></i></div></div></div>
  <main>
   <section id="left">
-   <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>
+   <div id="bar"><div class="paper-title"><span>QUESTION PAPER</span><b id="paperName">Loading…</b></div><div class="paper-tools"><button class="tool-btn" onclick="reloadPaper()" title="Reload question paper">↻</button><button class="tool-btn" onclick="openPaper()" title="Open question paper in a new tab">↗</button><button class="tool-btn" onclick="zoom(-25)" title="Zoom out">−</button><span id="zl">100%</span><button class="tool-btn" onclick="zoom(25)" title="Zoom in">+</button><span class="tool-sep"></span><button class="tool-btn" onclick="fitPaper()">Fit</button><label>Page <input type="number" id="pg" min="1" value="1" onchange="pdfView()"></label><button class="tool-btn" onclick="openPaper()">Open PDF</button></div></div>
    <div id="pdf">Loading question paper…</div>
   </section>
   <aside id="right">
