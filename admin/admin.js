@@ -92,3 +92,58 @@ db.auth.onAuthStateChange((_e,s)=>{session=s});
   try{if(await requireAdmin())await render()}
   catch(e){hide('#loading');show('#login');document.getElementById('loginError').textContent=e.message||String(e);show('#loginError')}
 })();
+
+// Schedule a test for all students
+async function scheduleTest(testPayload) {
+  const { title, startTime, endTime, durationMinutes, questions } = testPayload;
+
+  const { data, error } = await supabase
+    .from('tests')
+    .insert([
+      {
+        title,
+        start_time: new Date(startTime).toISOString(),
+        end_time: new Date(endTime).toISOString(),
+        duration_minutes: parseInt(durationMinutes, 10),
+        questions: questions // JSON array of questions, options, correct answers, and marks
+      }
+    ]);
+
+  if (error) {
+    console.error('Error creating test:', error.message);
+    alert('Failed to schedule test: ' + error.message);
+  } else {
+    alert('Test scheduled successfully for all students.');
+  }
+}
+
+// Fetch Full Student Analytics for a Test
+async function getTestAnalytics(testId) {
+  const { data, error } = await supabase
+    .from('submissions')
+    .select(`
+      id,
+      score,
+      total_marks,
+      accuracy,
+      started_at,
+      submitted_at,
+      status,
+      profiles ( email )
+    `)
+    .eq('test_id', testId);
+
+  if (error) {
+    console.error('Error loading analytics:', error.message);
+    return [];
+  }
+
+  return data.map(sub => ({
+    studentEmail: sub.profiles?.email,
+    score: sub.score,
+    totalMarks: sub.total_marks,
+    accuracy: `${sub.accuracy}%`,
+    timeTakenMinutes: Math.round((new Date(sub.submitted_at) - new Date(sub.started_at)) / 60000),
+    status: sub.status
+  }));
+}
