@@ -30,8 +30,8 @@
       return `<article class="backend-test-card ${r?'released':'locked'}">
         <div class="backend-test-status ${r?'open':'wait'}">${status}</div>
         <h3>${esc2(t.name)}</h3>
-        <div class="backend-test-meta">${esc2(t.description||'No description')}<br>${fmtDate(t.release_at)} · ${Number(t.duration_minutes)||180} min · ${Number(t.total_questions)||0} questions</div>
-        <div class="backend-test-count">${r?'<b>Paper released</b><br><span class="backend-test-meta">Question paper is available in the CBT.</span>':`<b>${countdown(t.release_at)}</b><br><span class="backend-test-meta">The paper remains locked until release.</span>`}</div>
+        <div class="backend-test-meta">${esc2(t.description||'No description')}<br>${fmtDate(t.release_at)} · ${Number(t.duration_minutes)||180} min · ${Number(t.total_questions)||0} questions · ${Number(t.total_marks)||0} marks</div>
+        <div class="backend-test-count">${r?'<b>Paper released</b><br><span class="backend-test-meta">Question paper · '+(Number(t.total_marks)||0)+' total marks</span>':`<b>${countdown(t.release_at)}</b><br><span class="backend-test-meta">The paper remains locked until release.</span>`}</div>
         <button class="backend-test-btn ${r?'':'locked'}" ${r&&!disabled?'':'disabled'} data-backend-test="${esc2(t.id)}">${btn}</button>
       </article>`;
     }).join('');
@@ -42,7 +42,7 @@
     if(!sb){box.innerHTML='<div class="backend-error">Supabase could not load. Refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="backend-empty">Sign in with Google to view tests published from the Admin Portal.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
+    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled').eq('enabled',true).order('release_at',{ascending:true});
     if(error){box.innerHTML=`<div class="backend-error">Could not load tests: ${esc2(error.message)}</div>`;return}
     tests=data||[];render();
   }
@@ -56,11 +56,11 @@
       if(error||!sign?.signedUrl)throw error||new Error('Could not open the question paper.');
       const total=Number(t.total_questions)||75;
       if(total%3!==0)throw new Error('This test has '+total+' questions. The current NTA CBT engine requires a total divisible by 3.');
-      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;setOrder('PCM');window._t=t.name;
+      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');window._t=t.name;
       closeM();
       if(pdfUrl)try{URL.revokeObjectURL(pdfUrl)}catch(e){}
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
-      S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:total},()=>({a:'',s:0,t:0}))};
+      S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,backendPaperPath:t.paper_url,maxMarks:Number(t.total_marks)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:total},()=>({a:'',s:0,t:0}))};
       S.q[0].s=1;begin();
       await createAttempt(t);
     }catch(e){alert(e.message||'Could not open this test.')}
@@ -69,7 +69,7 @@
     activeAttemptId=null;
     try{
       const {data:{session}}=await sb.auth.getSession();if(!session)return;
-      const {data,error}=await sb.from('attempts').insert({user_id:session.user.id,test_id:t.id,status:'in_progress',max_score:(Number(t.total_questions)||0)*4}).select('id').single();
+      const {data,error}=await sb.from('attempts').insert({user_id:session.user.id,test_id:t.id,status:'in_progress',max_score:Number(t.total_marks)||((Number(t.total_questions)||0)*Number(t.positive_marks??4))}).select('id').single();
       if(error)throw error;activeAttemptId=data.id;S.backendAttemptId=data.id;saveSess();
     }catch(e){console.warn('Attempt could not be created:',e.message)}
   }
@@ -91,6 +91,18 @@
     window.__backendFinishPatched=true;
   }
   function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(document.hidden)return;render()},1000)}
+  async function resumeBackendTest(saved){
+    try{
+      const t=tests.find(x=>Number(x.id)===Number(saved.backendTestId));
+      if(!t||!t.paper_url)throw new Error('The saved test paper could not be found.');
+      const {data:sign,error}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
+      if(error||!sign?.signedUrl)throw error||new Error('Could not reopen the question paper.');
+      pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
+      cfg.per=(Number(t.total_questions)||75)/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');
+      begin();
+    }catch(e){alert(e.message||'Could not reopen the saved test.');}
+  }
+  window.resumeBackendTest=resumeBackendTest;
   function init(){
     style();
     sb=window.mock1807Auth?.client || (window.supabase?.createClient?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null);

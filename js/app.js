@@ -113,14 +113,16 @@ function start(){
 }
 function resume(){
  S=Store.get('nta_sess');if(!S)return;
- cfg.per=S.per;setOrder(S.order||'PCM');
+ cfg.per=S.per;cfg.pos=Number(S.positiveMarks??cfg.pos);cfg.negA=Number(S.negativeMcq??cfg.negA);cfg.negB=Number(S.negativeNumerical??cfg.negB);setOrder(S.order||'PCM');
  if(S.done)return showRes();
- S.endAt=Date.now()+S.rem*1000;begin();
+ S.endAt=Date.now()+S.rem*1000;
+ if(S.backendTestId && typeof window.resumeBackendTest==='function') window.resumeBackendTest(S);
+ else begin();
 }
 function begin(){
  $('#land').hidden=true;$('#res').hidden=true;$('#app').hidden=false;
  $('#cn').textContent=S.name;$('#cr').textContent=S.roll||'—'; const av=$('#candidatePhoto'); if(av)av.src=S.photo||'';
- clearInterval(timerId);timerId=setInterval(tick,1000);tick();render();if(!pdfUrl)restorePdf();
+ clearInterval(timerId);timerId=setInterval(tick,1000);tick();render();if(pdfUrl)pdfView();else restorePdf();
  try{document.documentElement.requestFullscreen()}catch(e){}
 }
 function tick(){
@@ -214,7 +216,7 @@ function summary(){
 }
 function saveHist(){
  const sm=summary(),h=Store.get('nta_hist',[]).filter(x=>x.id!==S.id);
- h.unshift({id:S.id,name:S.name,roll:S.roll,date:S.date,score:sm.score,max:N()*cfg.pos,
+ h.unshift({id:S.id,name:S.name,roll:S.roll,date:S.date,score:sm.score,max:Number(S.maxMarks||N()*cfg.pos),
   subs:sm.subs.map(x=>({n:x.n,m:x.m,c:x.c,w:x.w,u:x.u})),resp:S.q.map(q=>q.a),type:S.type||'Test',s:S});
  Store.set('nta_hist',h.slice(0,30));
 }
@@ -260,7 +262,7 @@ function downloadReport(){dash();const w=window.open('','_blank');if(!w)return p
 function pasteKey(){applyKey($('#paste').value)}
 function dash(){
  saveSess();saveHist();if(Store.get('nta_tok',''))cloud('push',true);
- const sm=summary(),max=N()*cfg.pos;
+ const sm=summary(),max=Number(S.maxMarks||N()*cfg.pos);
  const errs=sm.E.map((e,i)=>({e,i})).filter(x=>x.e.r==='Incorrect');
  $('#dash').innerHTML=`<div class="card"><h3 style="margin-top:0">Score: ${sm.score} / ${max} &nbsp; Accuracy: ${sm.acc}%</h3>
  <table><tr><th>Subject</th><th>Correct (+${cfg.pos})</th><th>Incorrect</th><th>Unattempted</th><th>Net Marks</th><th>Time</th><th>Accuracy</th></tr>

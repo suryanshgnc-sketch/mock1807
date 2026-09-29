@@ -1,21 +1,22 @@
-MOCK1807 STUDENT TEST PORTAL PATCH
+MOCK1807 BACKEND FIX — STEP 3
 
-Replace ONLY:
-  index.html
-  js/app.js
-  js/backend-tests.js (new file)
+This patch fixes two issues:
+1. The question-paper PDF uploaded in Admin was signed but never rendered in the CBT.
+2. Test total marks / marking scheme were not stored; the admin test builder now has:
+   - Total marks
+   - Marks per correct answer
+   - Negative marks for MCQ
+   - Negative marks for Numerical
 
-Do NOT remove/replace:
-  js/auth.js
-  js/analysis.js
-  css/
-  GTM-PDFS/
-  other files
+FILES TO REPLACE:
+- admin/index.html
+- admin/admin.js
+- js/app.js
+- js/backend-tests.js
 
-This removes hardcoded GTM/test definitions from the student home and loads tests from Supabase public.tests created by the Admin Portal.
-The question paper is fetched with a signed URL only after release_at. Answer keys are never fetched by the student site.
+Run STEP-NEXT.sql once in Supabase SQL Editor before creating NEW tests.
+Do NOT replace GTM-PDFS or other files.
 
-Requirements:
-- js/auth.js from the Google-login backend step must remain.
-- Supabase tests RLS should allow authenticated users to SELECT enabled tests.
-- Storage bucket test-pdfs must remain PRIVATE and the released question-paper SELECT policy must be present.
+For existing tests created before this migration, the database defaults total_marks=300,
+positive_marks=4, negative_mcq=1, negative_numerical=1. You can recreate/edit them after
+this patch if their marking scheme differs.

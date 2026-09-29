@@ -23,7 +23,7 @@ async function signIn(){ $('#googleBtn').disabled=true;hide('#loginError'); cons
 async function loadOverview(){
   const [p,t,a]=await Promise.all([
     db.from('profiles').select('id',{count:'exact',head:true}),
-    db.from('tests').select('id,name,release_at,duration_minutes,total_questions,paper_url,enabled',{count:'exact'}).order('release_at',{ascending:false}),
+    db.from('tests').select('id,name,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled',{count:'exact'}).order('release_at',{ascending:false}),
     db.from('attempts').select('id,test_id,user_id,status,score,max_score,correct_count,incorrect_count,unanswered_count,started_at,submitted_at',{count:'exact'}).order('created_at',{ascending:false})
   ]);
   if(p.error)throw p.error;if(t.error)throw t.error;if(a.error)throw a.error;
@@ -33,10 +33,10 @@ async function loadOverview(){
   <div class="section-head"><h2>Recent tests</h2><button class="ghost" onclick="setView('tests')">View all →</button></div>${testsTable(t.data||[])}
   <div class="section-head"><h2>Recent attempts</h2></div>${attemptsTable(attempts.slice(0,12))}`;
 }
-function testsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No tests yet. Create your first test above.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>Test</th><th>Release</th><th>Duration</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>{const [s,c]=statusFor(x);return `<tr><td><b>${esc(x.name)}</b><small>${esc(x.description||'')}</small></td><td>${formatDate(x.release_at)}</td><td>${x.duration_minutes} min</td><td>${x.total_questions}</td><td><span class="pill ${c}">${s}</span></td><td><button class="mini js-toggle" data-id="${x.id}" data-enabled="${x.enabled!==false}">${x.enabled===false?'Enable':'Disable'}</button> <button class="mini danger-btn js-delete" data-id="${x.id}" data-name="${esc(x.name)}">Delete</button></td></tr>`}).join('')}</tbody></table></div>`}
+function testsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No tests yet. Create your first test above.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>Test</th><th>Release</th><th>Duration</th><th>Questions</th><th>Marks</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows.map(x=>{const [s,c]=statusFor(x);return `<tr><td><b>${esc(x.name)}</b><small>${esc(x.description||'')}</small></td><td>${formatDate(x.release_at)}</td><td>${x.duration_minutes} min</td><td>${x.total_questions}</td><td>${x.total_marks ?? '—'}</td><td><span class="pill ${c}">${s}</span></td><td><button class="mini js-toggle" data-id="${x.id}" data-enabled="${x.enabled!==false}">${x.enabled===false?'Enable':'Disable'}</button> <button class="mini danger-btn js-delete" data-id="${x.id}" data-name="${esc(x.name)}">Delete</button></td></tr>`}).join('')}</tbody></table></div>`}
 function attemptsTable(rows){if(!rows.length)return '<div class="table-wrap"><div class="empty">No attempts yet.</div></div>';return `<div class="table-wrap"><table><thead><tr><th>User</th><th>Test</th><th>Status</th><th>Score</th><th>Correct</th><th>Started</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.user_id?.slice(0,8)||'')}…</td><td>${esc(testName(x.test_id))}</td><td>${esc(x.status)}</td><td>${x.score}/${x.max_score}</td><td>${x.correct_count}</td><td>${formatDate(x.started_at)}</td></tr>`).join('')}</tbody></table></div>`}
 function testName(id){const t=testsCache.find(x=>String(x.id)===String(id));return t?.name||String(id)}
-async function loadTests(){const {data,error}=await db.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,paper_url,enabled,created_at').order('release_at',{ascending:false});if(error)throw error;testsCache=data||[];$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">TEST MANAGEMENT</div><h2>Tests & schedules</h2><p class="muted">Upload PDFs, set exact release times, disable tests, or remove them.</p></div><button class="primary" onclick="openCreateModal()">+ New Test</button></div>${testsTable(data||[])}`}
+async function loadTests(){const {data,error}=await db.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,paper_url,enabled,created_at').order('release_at',{ascending:false});if(error)throw error;testsCache=data||[];$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">TEST MANAGEMENT</div><h2>Tests & schedules</h2><p class="muted">Upload PDFs, set exact release times, disable tests, or remove them.</p></div><button class="primary" onclick="openCreateModal()">+ New Test</button></div>${testsTable(data||[])}`}
 async function loadStudents(){const {data,error}=await db.from('profiles').select('id,name,photo_url,created_at').order('created_at',{ascending:false});if(error)throw error;$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">STUDENT DIRECTORY</div><h2>Students</h2><p class="muted">Profiles registered through Google login.</p></div></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>User ID</th><th>Joined</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td><b>${esc(x.name||'Unnamed')}</b></td><td>${esc(x.id)}</td><td>${formatDate(x.created_at)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">No students.</td></tr>'}</tbody></table></div>`}
 async function loadAttempts(){const {data,error}=await db.from('attempts').select('*').order('created_at',{ascending:false});if(error)throw error;$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">ATTEMPT LOG</div><h2>Attempts & scores</h2><p class="muted">Saved sessions will appear here when the student CBT is wired to create and submit attempts.</p></div></div>${attemptsTable(data||[])}`}
 async function render(){try{if(current==='overview')await loadOverview();else if(current==='tests')await loadTests();else if(current==='students')await loadStudents();else await loadAttempts();wireDynamicButtons()}catch(e){$('#content').innerHTML=`<div class="hero"><h2 class="danger">Dashboard error</h2><p class="muted">${esc(e.message||e)}</p></div>`}}
@@ -45,9 +45,14 @@ function openCreateModal(){ $('#modal').classList.remove('hidden');$('#modal').s
 function closeModal(){ $('#modal').classList.add('hidden');$('#modal').setAttribute('aria-hidden','true');$('#testForm').reset();hide('#uploadProgress');}
 async function uploadPdf(file,path){const {error}=await db.storage.from(BUCKET).upload(path,file,{contentType:'application/pdf',upsert:true});if(error)throw error;return path}
 async function createTest(e){e.preventDefault();const f=new FormData(e.target);const name=String(f.get('name')||'').trim(),releaseLocal=f.get('release'),paper=f.get('paper'),key=f.get('key');if(!paper||!key)throw new Error('Please select both PDF files.');
+  const questions=Number(f.get('questions')), totalMarks=Number(f.get('totalMarks')), positive=Number(f.get('positive')), negativeA=Number(f.get('negativeA')), negativeB=Number(f.get('negativeB'));
+  if(!Number.isFinite(questions)||questions<1)throw new Error('Enter a valid question count.');
+  if(questions%3!==0)throw new Error('Total questions must be divisible by 3 for the current PCM CBT layout.');
+  if(!Number.isFinite(totalMarks)||totalMarks<=0)throw new Error('Enter valid total marks.');
+  if(!Number.isFinite(positive)||positive<0||!Number.isFinite(negativeA)||negativeA<0||!Number.isFinite(negativeB)||negativeB<0)throw new Error('Enter valid marking values.');
   $('#createTestBtn').disabled=true;show('#uploadProgress');$('#uploadProgress span').textContent='Creating test…';$('.progress-bar').style.width='15%';
   const releaseAt=new Date(releaseLocal);if(Number.isNaN(releaseAt.getTime()))throw new Error('Invalid release date/time.');
-  const {data:test,error}=await db.from('tests').insert({name,description:String(f.get('description')||'').trim(),release_at:releaseAt.toISOString(),duration_minutes:Number(f.get('duration')),total_questions:Number(f.get('questions')),enabled:true}).select('id').single();if(error)throw error;
+  const {data:test,error}=await db.from('tests').insert({name,description:String(f.get('description')||'').trim(),release_at:releaseAt.toISOString(),duration_minutes:Number(f.get('duration')),total_questions:questions,total_marks:totalMarks,positive_marks:positive,negative_mcq:negativeA,negative_numerical:negativeB,enabled:true}).select('id').single();if(error)throw error;
   try{const base=`tests/${test.id}`;$('.progress-bar').style.width='35%';$('#uploadProgress span').textContent='Uploading question paper…';const paperPath=await uploadPdf(paper,`${base}/question-paper.pdf`);$('.progress-bar').style.width='65%';$('#uploadProgress span').textContent='Uploading answer key…';const keyPath=await uploadPdf(key,`${base}/answer-key.pdf`);$('.progress-bar').style.width='85%';const {error:ue}=await db.from('tests').update({paper_url:paperPath}).eq('id',test.id);if(ue)throw ue;const {error:ke}=await db.from('test_answer_keys').upsert({test_id:test.id,answer_key:{storage_path:keyPath,filename:key.name,mime:'application/pdf'}},{onConflict:'test_id'});if(ke)throw ke;$('.progress-bar').style.width='100%';toast('Test created and scheduled ✓');closeModal();setView('tests');}
   catch(err){await db.from('tests').delete().eq('id',test.id);throw err}
 }
@@ -92,58 +97,3 @@ db.auth.onAuthStateChange((_e,s)=>{session=s});
   try{if(await requireAdmin())await render()}
   catch(e){hide('#loading');show('#login');document.getElementById('loginError').textContent=e.message||String(e);show('#loginError')}
 })();
-
-// Schedule a test for all students
-async function scheduleTest(testPayload) {
-  const { title, startTime, endTime, durationMinutes, questions } = testPayload;
-
-  const { data, error } = await supabase
-    .from('tests')
-    .insert([
-      {
-        title,
-        start_time: new Date(startTime).toISOString(),
-        end_time: new Date(endTime).toISOString(),
-        duration_minutes: parseInt(durationMinutes, 10),
-        questions: questions // JSON array of questions, options, correct answers, and marks
-      }
-    ]);
-
-  if (error) {
-    console.error('Error creating test:', error.message);
-    alert('Failed to schedule test: ' + error.message);
-  } else {
-    alert('Test scheduled successfully for all students.');
-  }
-}
-
-// Fetch Full Student Analytics for a Test
-async function getTestAnalytics(testId) {
-  const { data, error } = await supabase
-    .from('submissions')
-    .select(`
-      id,
-      score,
-      total_marks,
-      accuracy,
-      started_at,
-      submitted_at,
-      status,
-      profiles ( email )
-    `)
-    .eq('test_id', testId);
-
-  if (error) {
-    console.error('Error loading analytics:', error.message);
-    return [];
-  }
-
-  return data.map(sub => ({
-    studentEmail: sub.profiles?.email,
-    score: sub.score,
-    totalMarks: sub.total_marks,
-    accuracy: `${sub.accuracy}%`,
-    timeTakenMinutes: Math.round((new Date(sub.submitted_at) - new Date(sub.started_at)) / 60000),
-    status: sub.status
-  }));
-}
