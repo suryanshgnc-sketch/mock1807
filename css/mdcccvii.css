@@ -101,3 +101,9 @@ body,#land{background:#050505}
 .sf-brand{display:flex;align-items:center;gap:14px}.sf-brand img{width:58px;height:58px;border-radius:50%}
 .stamp{border-color:var(--ac);color:var(--ac)}.rw s{border-color:#4a544a}
 .hero h1{background:none}.dk .box{box-shadow:0 30px 80px #000}
+
+/* Fix: legacy exam-screen rules (style.css / theme.css) style every <footer> white. Reset for site footers. */
+footer.site-foot2,footer.site-foot{background:transparent!important;box-shadow:none}
+footer.site-foot2{display:block;padding:36px 0 26px;border-top:2px solid var(--line)}
+footer.site-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 24px;margin-top:64px;padding:24px 0;border-top:2px solid var(--line);font-size:13px;color:var(--mu)}
+footer.site-foot b,.sf-base b{color:var(--tx)}
