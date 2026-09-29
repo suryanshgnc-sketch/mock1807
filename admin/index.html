@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>mock1807 · Admin</title>
-  <meta name="theme-color" content="#090b0f">
+  <title>mock1807 · Admin Control Center</title>
+  <meta name="theme-color" content="#080a0d">
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
       <div class="mark">1807</div>
       <div class="eyebrow">MOCK1807 · CONTROL CENTER</div>
       <h1>Admin Dashboard</h1>
-      <p>Sign in with your authorized Google account to manage tests and view student data.</p>
+      <p>Sign in with your authorized Google account to manage tests, PDFs and student data.</p>
       <button id="googleBtn" class="primary">Continue with Google</button>
       <div id="loginError" class="error hidden"></div>
       <a href="../" class="back">← Back to student site</a>
@@ -38,10 +38,34 @@
     </aside>
 
     <main class="main">
-      <header class="topbar"><div><div class="eyebrow">CONTROL CENTER</div><h1 id="viewTitle">Overview</h1></div><button id="refresh" class="ghost">↻ Refresh</button></header>
+      <header class="topbar">
+        <div><div class="eyebrow">CONTROL CENTER</div><h1 id="viewTitle">Overview</h1></div>
+        <div class="top-actions"><button id="refresh" class="ghost">↻ Refresh</button><button id="newTestTop" class="primary small">+ New Test</button></div>
+      </header>
       <div id="toast" class="toast hidden"></div>
       <section id="content"></section>
     </main>
+  </div>
+
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <div class="modal-head"><div><div class="eyebrow">TEST BUILDER</div><h2>Create new test</h2></div><button class="icon-btn" data-close-modal>×</button></div>
+      <form id="testForm">
+        <div class="form-grid">
+          <label>Test name<input name="name" required placeholder="GTM 01"></label>
+          <label>Duration (minutes)<input name="duration" type="number" min="1" value="180" required></label>
+          <label class="wide">Description<textarea name="description" rows="3" placeholder="Optional test description"></textarea></label>
+          <label>Release date & time<input name="release" type="datetime-local" required></label>
+          <label>Total questions<input name="questions" type="number" min="1" value="90" required></label>
+          <label class="wide file-field">Question paper PDF<input name="paper" type="file" accept="application/pdf" required><small>Private admin storage. Students will receive the paper through the CBT when the test is released.</small></label>
+          <label class="wide file-field">Answer key / solutions PDF<input name="key" type="file" accept="application/pdf" required><small>Kept in the private admin storage bucket. It is not exposed to students.</small></label>
+        </div>
+        <div id="uploadProgress" class="progress hidden"><div class="progress-bar"></div><span>Uploading…</span></div>
+        <div id="formError" class="error hidden"></div>
+        <div class="modal-foot"><button type="button" class="ghost" data-close-modal>Cancel</button><button type="submit" id="createTestBtn" class="primary">Create & Schedule Test</button></div>
+      </form>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
