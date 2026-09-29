@@ -98,7 +98,7 @@ html{scroll-behavior:smooth}.sec{scroll-margin-top:80px}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}100%{box-shadow:0 0 0 9px transparent}}
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}.reveal.in{opacity:1;transform:none}
 .bt-card,.fc,.pod,.st{transition:transform .25s ease,border-color .25s,box-shadow .25s,opacity .7s}
-.bt-card:hover,.fc:hover{transform:translateY(-5px)!important;border-color:#3f5fb5;box-shadow:0 18px 40px -18px rgba(79,124,255,.45)}
+.bt-card:hover,.fc:hover{border-color:#3f5fb5;box-shadow:0 18px 40px -18px rgba(79,124,255,.45)}
 .bt-btn:not(:disabled){position:relative;overflow:hidden}.bt-btn:not(:disabled):after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-120%);animation:shine 3.2s infinite}
 @keyframes shine{60%,100%{transform:translateX(120%)}}
 .feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
