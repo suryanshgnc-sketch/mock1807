@@ -17,7 +17,7 @@ var ILL={
  key:'<svg viewBox="0 0 64 64" width="54" height="54" fill="none" stroke="#86ff3f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="32" r="12"/><path d="M34 32h24M50 32v9M42 32v7"/><circle cx="22" cy="32" r="4" fill="#86ff3f"/></svg>',
  bolt:'<svg viewBox="0 0 64 64" width="54" height="54" fill="none" stroke="#86ff3f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M36 6L14 36h16l-4 22 24-32H34z" fill="#86ff3f22"/></svg>'
 };
-function bg(){return '<div class="rc-bg"><i></i><i></i><i></i><span></span></div>'}
+function bg(){var dust='';for(var i=0;i<22;i++)dust+='<b style="--x:'+((i*37)%100)+'%;--y:'+((i*61)%100)+'%;--s:'+((i%4)+2)+'px;--d:-'+(i*0.73)+'s"></b>';return '<div class="rc-bg"><i></i><i></i><i></i><span></span><div class="rc-dust">'+dust+'</div><div class="rc-vignette"></div></div>'}
 function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="goHome()">\u2190 Home</button><div class="rc-id"><small>RESULT CENTRE</small><h1>'+esc(S.name||'Student')+'</h1></div><div class="rc-meta"><b>'+esc(S.type||'Test')+'</b><span>'+esc(S.date||'')+'</span></div>'+(sub||'')+'</header>'}
 /* ---- key fetch ---- */
 async function fetchKey(){
@@ -136,13 +136,25 @@ function count(root){
  var arc=q('#rcArc');if(arc)requestAnimationFrame(function(){requestAnimationFrame(function(){arc.style.strokeDashoffset=arc.dataset.to})});
  root.querySelectorAll('.rc-bar i,.rc-dist i').forEach(function(b){requestAnimationFrame(function(){b.classList.add('go')})});
 }
+function bindMotion(){
+ var root=q('.rc');if(!root||root.dataset.motionBound)return;root.dataset.motionBound='1';
+ var fine=window.matchMedia&&window.matchMedia('(pointer:fine)').matches;
+ if(!fine)return;
+ root.addEventListener('pointermove',function(e){
+  var r=root.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+  root.style.setProperty('--mx',(x*100)+'%');root.style.setProperty('--my',(y*100)+'%');
+  var hero=q('.rc-hero');if(hero){hero.style.setProperty('--hx',(x*10).toFixed(2)+'px');hero.style.setProperty('--hy',(y*8).toFixed(2)+'px');}
+  root.querySelectorAll('.rc-card,.rc-panel,.rc-sub').forEach(function(el){var b=el.getBoundingClientRect(),dx=(e.clientX-(b.left+b.width/2))/b.width,dy=(e.clientY-(b.top+b.height/2))/b.height;if(Math.abs(dx)<.9&&Math.abs(dy)<.9){el.style.setProperty('--rx',(-dy*2.2).toFixed(2)+'deg');el.style.setProperty('--ry',(dx*2.2).toFixed(2)+'deg');el.style.setProperty('--mxp',((dx+.5)*100)+'%');el.style.setProperty('--myp',((dy+.5)*100)+'%');}});
+ });
+ root.addEventListener('pointerleave',function(){root.querySelectorAll('.rc-card,.rc-panel,.rc-sub').forEach(function(el){el.style.setProperty('--rx','0deg');el.style.setProperty('--ry','0deg')})});
+}
 function draw(){
  var res=q('#res');if(!res)return;
  if(RC.sid!==S.id){RC={sid:S.id,st:'loading',view:'home',filter:'all',sec:0};fetchKey().then(function(){if(RC.st==='ready'&&RC.view==='home')RCcheck();else draw()})}
  clearInterval(RC.poll);if(RC.st==='locked'&&RC.why==='pending'&&!res.hidden)RC.poll=setInterval(function(){if(document.hidden)return;var rr=q('#res');if(!rr||rr.hidden){clearInterval(RC.poll);return}var sid=RC.sid;fetchKey().then(function(){if(RC.sid===sid&&RC.st==='ready'){clearInterval(RC.poll);RCcheck()}})},15000);
  var body=RC.st==='loading'?vLoading():RC.st==='locked'?vLocked():RC.view==='key'?vKey():RC.view==='result'?vResult():vHome();
  res.innerHTML='<div class="rc">'+bg()+top()+'<main class="rc-main">'+body+'</main><div id="dash" hidden></div></div>';
- res.scrollTop=0;window.scrollTo(0,0);count(res);
+ res.scrollTop=0;window.scrollTo(0,0);count(res);bindMotion();
 }
 window.goHome=function(){clearInterval(RC.poll);var l=q('#land'),r=q('#res'),a=q('#app');if(r)r.hidden=true;if(a)a.hidden=true;if(l)l.hidden=false;try{home()}catch(e){}try{window.refreshBackendTests&&window.refreshBackendTests()}catch(e){}window.scrollTo(0,0)};
 window.drawRes=draw;
