@@ -74,7 +74,3 @@ Hero: headline letters drop and bounce in, 18 neon symbols fall under real 2D ph
 - Settings → "Exam & admin theme" is a real Dark/Light switch (stored in `md_theme`, shared with the admin panel).
 - Admin: `pro.css` and `mdcccvii-admin.css` removed; one tokenized `admin/admin.css` (dark/light). Answer-key panel is themed and only shows on the Tests view.
 - Admin → Tests: new **Delete forever** button (works on archived tests too). It asks you to type the test name, then deletes the `tests` row (attempts/answers/keys cascade via existing foreign keys) and removes the test's PDFs from storage. No SQL was changed; if your `tests` table has no admin DELETE policy, the admin sees a clear error instead of a silent failure.
-
-
-### Student result persistence (V11)
-Run `sql/STUDENT-RESULTS-PERSISTENCE-V11.sql` once after the current V10/V10.2 database. Student result access is now independent of remaining attempts; the Re-attempt action appears only when the server says another attempt is available. Submitted results can be reopened from the Tests cards while signed in.

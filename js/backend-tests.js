@@ -5,7 +5,7 @@
   const SUPABASE_KEY='sb_publishable_aiJYxr3AYoeZHBXwIoXaaQ_gIfHxV2s';
   const BUCKET='test-pdfs';
   const $=s=>document.querySelector(s);
-  let sb=null, tests=[], doneMap={}, statusMap={}, activeAttemptId=null, finishing=false, syncTimer=null;
+  let sb=null, tests=[], doneMap={}, activeAttemptId=null, finishing=false, syncTimer=null;
 
   function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function parts(ms){ms=Math.max(0,ms);return {d:Math.floor(ms/86400000),h:Math.floor(ms%86400000/3600000),m:Math.floor(ms%3600000/60000),s:Math.floor(ms%60000/1000)}}
@@ -27,14 +27,9 @@
   function calLink(t){const s=new Date(t.release_at),e=new Date(s.getTime()+(Number(t.duration_minutes)||180)*60000),f=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.name)+'&dates='+f(s)+'/'+f(e)+'&details='+encodeURIComponent('MDCCCVII Tests - starts at the scheduled time.')}
   function localDone(t){try{return (JSON.parse(localStorage.getItem('nta_hist')||'[]')||[]).filter(x=>x&&x.s&&Number(x.s.backendTestId)===Number(t.id))}catch(e){return[]}}
   function actions(t,r){
-    const loc=localDone(t), st=statusMap[t.id]||{};
-    const used=Math.max(Number(st.attempts_used)||0,Number(doneMap[t.id])||0,loc.length);
-    const base=Number(st.base_attempts)||1+Number(t.reattempt_limit||0);
-    const grants=Math.max(0,Number(st.granted_remaining)||0);
-    const left=Math.max(0,base-used)+grants;
-    const hasSubmitted=Boolean(st.latest_attempt_id)||used>0&&Boolean(st.has_submitted);
-    if(!r||!hasSubmitted)return `<button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>`;
-    return `<div class="bt-dual ${left>0?'has-reattempt':'single-action'}"><button class="bt-btn" data-bt-result="${esc2(t.id)}">Analysis / Result</button>${left>0?`<button class="bt-btn alt" data-backend-test="${esc2(t.id)}">Re-attempt</button>`:''}</div>`}
+    const loc=localDone(t),used=Math.max(doneMap[t.id]||0,loc.length),lim=1+Number(t.reattempt_limit||0),left=Math.max(0,lim-used);
+    if(!r||!used)return `<button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>`;
+    return `<div class="bt-dual"><button class="bt-btn" ${loc.length?'':'disabled title="Result was saved on another device"'} data-bt-result="${loc.length?esc2(loc[0].id):''}">Analysis / Result</button><button class="bt-btn alt" ${left?'':'disabled'} data-backend-test="${esc2(t.id)}">${left?'Re-attempt':'No attempts left'}</button></div>`}
   function card(t){
     const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180,ra=Number(t.reattempt_limit||0);
     return `<article class="bt-card ${r?'is-live':''}">
@@ -54,7 +49,7 @@
     const feat=nx?`<article class="nt"><div><span class="bt-pill">Next up</span><h3>${esc2(nx.name)}</h3><p>${tz(nx.release_at)} · ${Number(nx.duration_minutes)||180} min · ${Number(nx.total_questions)||0} questions · ${Number(nx.total_marks)||0} marks</p><a class="bt-cal" href="${calLink(nx)}" target="_blank" rel="noopener">+ Add to calendar</a></div><div class="cd" data-cd="${esc2(nx.id)}"><span>Opens in</span><div class="cd-t big">${tiles(new Date(nx.release_at)-Date.now())}</div></div></article>`:'';
     box.innerHTML=feat+live.map(card).join('')+up.slice(1).map(card).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
-    box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.btResult&&typeof openBackendResult==='function')openBackendResult(Number(b.dataset.btResult))}));
+    box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.btResult&&typeof openH==='function')openH(Number(b.dataset.btResult))}));
   }
   function tick(){
     const box=container();if(!box)return;let flip=false;
@@ -69,18 +64,7 @@
     const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];
-    doneMap={};statusMap={};
-    try{
-      const {data:st,error:se}=await sb.rpc('get_my_attempt_status');
-      if(se)throw se;
-      (st||[]).forEach(x=>{
-        statusMap[x.test_id]={...x,has_submitted:Boolean(x.latest_attempt_id)};
-        doneMap[x.test_id]=Number(x.attempts_used)||0;
-      });
-    }catch(e){
-      console.warn('Attempt status RPC unavailable, using submitted-attempt fallback:',e.message);
-      try{const uid=sessionData.session.user.id,{data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',uid).in('status',['submitted','in_progress']);(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1;if(a.status==='submitted')statusMap[a.test_id]={...(statusMap[a.test_id]||{}),has_submitted:true}})}catch(e2){console.warn('Attempt counts unavailable',e2.message)}
-    }
+    try{const uid=sessionData.session.user.id,{data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',uid).eq('status','submitted');doneMap={};(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1})}catch(e){console.warn('Attempt counts unavailable',e.message)}
     render();
   }
   async function launch(id){
@@ -220,43 +204,6 @@
     }catch(e){alert(e.message||'Could not reopen the saved test.');}
   }
   window.resumeBackendTest=resumeBackendTest;
-  window.openBackendResult=async function(testId){
-    if(!sb){alert('Results are temporarily unavailable. Please refresh and try again.');return;}
-    try{
-      const {data:rows,error}=await sb.rpc('get_my_test_analysis',{p_test_id:Number(testId)});
-      if(error)throw error;
-      if(!Array.isArray(rows)||!rows.length){
-        const {data:rs,error:re}=await sb.rpc('get_my_results');
-        if(re)throw re;
-        const r=(rs||[]).find(x=>Number(x.test_id)===Number(testId));
-        if(r){
-          alert('Your attempt is saved. The detailed analysis will appear here as soon as the answer key is published.');
-          return;
-        }
-        throw new Error('No submitted result was found for this test.');
-      }
-      const first=rows[0], profile=getProfile();
-      const total=Number(first.total_questions)||rows.length;
-      if(total%3!==0)throw new Error('This test has an unsupported question count for the current result viewer.');
-      cfg.per=total/3;cfg.dur=Number(first.duration_minutes)||180;
-      cfg.pos=Number(first.positive_marks)||4;cfg.negA=Number(first.negative_mcq)||1;cfg.negB=Number(first.negative_numerical)||1;setOrder('PCM');
-      S={
-        id:'backend-result-'+String(first.attempt_id),type:first.test_name||'Test',name:profile.name||'Student',photo:profile.photo||'',roll:'',cur:0,done:true,mode:'A',
-        key:rows.map(x=>String(x.correct_response??'').trim()),keyFromServer:true,man:[],
-        date:first.submitted_at?new Date(first.submitted_at).toLocaleString():new Date().toLocaleString(),
-        per:cfg.per,order:'PCM',backendTestId:Number(first.test_id),backendAttemptId:Number(first.attempt_id),
-        maxMarks:Number(first.max_score)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,
-        q:rows.map(x=>({a:String(x.response??'').trim(),s:0,t:0}))
-      };
-      $('#land').hidden=true;$('#app').hidden=true;$('#res').hidden=false;
-      if(typeof window.drawRes==='function')window.drawRes();
-      window.scrollTo(0,0);
-    }catch(e){
-      console.error('Could not open persistent result:',e);
-      alert(e?.message||'Could not load your saved result. Please refresh and try again.');
-    }
-  };
-
   function init(){
     style();
     sb=window.mock1807Auth?.client || (window.supabase?.createClient?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null);

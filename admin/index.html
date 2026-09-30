@@ -34,10 +34,11 @@
         <button class="nav" data-view="attempts">Attempts</button>
         <button class="nav" data-view="analytics">Analytics</button>
         <button class="nav" data-view="audit">Audit Log</button>
+        <button class="nav" data-view="admins">Admins</button>
       </nav>
       <div class="side-bottom">
         <div id="adminIdentity" class="identity"></div>
-        <button id="logout" class="logout">Sign out</button>
+        <a class="back" href="../">↗ Student Portal</a><button id="logout" class="logout">Sign out</button>
       </div>
     </aside>
 
@@ -83,8 +84,10 @@
 
   <div id="purgeModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-purge></div><div class="modal-card narrow dangerous"><div class="modal-head"><div><div class="eyebrow">DANGER ZONE</div><h2>Delete test forever</h2></div><button class="icon-btn" data-close-purge type="button">×</button></div><p class="muted" id="purgeInfo"></p><label class="muted" style="display:block;font-size:13px">Type the test name to confirm<input id="purgeInput" autocomplete="off" style="width:100%;margin-top:7px"></label><div id="purgeError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-purge>Cancel</button><button type="button" id="purgeGo" class="primary danger-fill" disabled>Delete forever</button></div></div></div>
 
+
+  <div id="adminModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-admin></div><div class="modal-card narrow"><div class="modal-head"><div><div class="eyebrow">ACCESS CONTROL</div><h2>Change administrator access</h2></div><button class="icon-btn" data-close-admin type="button">×</button></div><p class="muted" id="adminModalInfo"></p><div id="adminModalError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-admin>Cancel</button><button type="button" id="adminModalConfirm" class="primary">Confirm</button></div></div></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js?v=7"></script>
+  <script src="admin.js?v=8"></script>
   <script src="keys.js?v=3"></script>
   <script src="motion.js"></script>
 </body>

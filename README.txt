@@ -17,15 +17,8 @@ NO backend files changed.
 Verified:
 - JavaScript syntax checks pass for all 3 JS files.
 - Fixed student result loader session-scope bug.
-- Re-attempt is shown only when another attempt is actually available.
+- Re-attempt button is disabled when no attempts remain.
 - Existing backend attempt/submission functions are reused.
 - CSS/JS patch contains no SQL.
 
 Important: replace files at the exact paths above; do not overwrite other files.
-
-RESULT VISIBILITY PATCH (V11)
------------------------------
-Run sql/STUDENT-RESULTS-PERSISTENCE-V11.sql after the existing result/attempt SQL.
-Students can then reopen their submitted test result from any device while signed in.
-The Analysis / Result action is independent of the remaining-attempt count; the Re-attempt
-button is shown only when another attempt is actually available.

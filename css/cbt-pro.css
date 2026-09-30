@@ -64,7 +64,3 @@
 .acts .btn{min-height:40px;transition:transform .18s,box-shadow .18s}.acts .btn:hover{transform:translateY(-1px)}
 @media(min-width:1200px){#app main{grid-template-columns:minmax(0,1.7fr) minmax(440px,.72fr)!important}#grid{grid-template-columns:repeat(10,1fr)!important}.response-head{padding-inline:20px}.qa{margin-inline:18px}.acts{padding-inline:18px!important}}
 @media(max-width:760px){#app main{height:auto!important;min-height:calc(100vh - 64px)}#left,#right{height:auto!important}.exam-progress{display:none!important}}
-
-/* V11 result/reattempt action states */
-.bt-dual.single-action{grid-template-columns:1fr}
-.bt-dual.single-action .bt-btn{width:100%}
