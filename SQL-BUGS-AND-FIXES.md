@@ -43,3 +43,15 @@ Existing V10 database: run only `FINAL-PATCH-V10.2.sql`. Then re-publish each an
 | 17 | Save silently did nothing if RLS blocked the update (0 rows changed, no error) | Admin now shows "Nothing was saved... check the RLS policy on tests" |
 | 18 | Paper-replace failure was ignored | Error is now shown |
 Note: duration, question count, marking scheme and paper are intentionally locked once any attempt exists; create a new test for those changes.
+
+## Admin panel "cooked": root causes found by running the real admin.js against a real PostgREST API
+| # | Cause | Fix |
+|---|-------|-----|
+| 19 | **Editing a test uploaded 0-byte PDFs.** An empty file picker still returns an empty File, which is truthy, so every edit tried to overwrite the question paper and answer-key PDFs with empty files (error, hang, or a wiped paper) | Empty files are now ignored (`admin/admin.js`) |
+| 20 | `test_answer_keys` table was never created by any SQL file; creating a test failed and then deleted the new row | Created by the patch (admin-only RLS) |
+| 21 | Admin-required columns could be missing (`tests.paper_url`, `profiles.created_at`, ...) and broke the whole admin load | Patch adds them if missing |
+| 22 | `test-pdfs` bucket and policies not guaranteed; students could be given wider access than the question paper | Patch creates the bucket, admin-all policy, and student read for question-paper.pdf only |
+| 23 | Browser could keep the old `admin.js` (same `?v=5`) | Cache-buster bumped to `?v=6` |
+| 24 | PostgREST schema cache not reloaded after function changes | Patch ends with `notify pgrst, 'reload schema'` |
+Verified via real HTTP calls (PostgREST + Postgres + RLS): admin load, create/edit/toggle/archive test, publish key, grant attempt, update student, audit; student start/save/resume/submit/key/results/leaderboard; direct tampering refused.
+If the admin still misbehaves after this, open the browser console (F12) on the admin page and send me the first red error.

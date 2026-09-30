@@ -4,6 +4,42 @@
 -- late submissions never scored, unvalidated answers, direct attempt/answer tampering, expired attempts never closed, anon RPC access.
 -- Optional (if pg_cron is enabled):  select cron.schedule('close-expired','*/5 * * * *','select public.close_expired_attempts()');
 -- ============================================================
+-- ---------- SAFETY: objects the admin panel needs (no-ops if they already exist) ----------
+alter table public.tests add column if not exists description text;
+alter table public.tests add column if not exists paper_url text;
+alter table public.tests add column if not exists enabled boolean not null default true;
+alter table public.tests add column if not exists archived boolean not null default false;
+alter table public.tests add column if not exists reattempt_limit integer not null default 0;
+alter table public.tests add column if not exists leaderboard_enabled boolean not null default true;
+alter table public.tests add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists photo_url text;
+alter table public.profiles add column if not exists blocked boolean not null default false;
+alter table public.attempts add column if not exists created_at timestamptz not null default now();
+alter table public.attempts add column if not exists unanswered_count integer;
+alter table public.attempts add column if not exists time_taken_seconds bigint;
+create table if not exists public.test_answer_keys(
+  test_id bigint primary key references public.tests(id) on delete cascade,
+  answer_key jsonb, created_at timestamptz not null default now());
+alter table public.test_answer_keys enable row level security;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='test_answer_keys' and policyname='admin_all_answer_keys') then
+    create policy admin_all_answer_keys on public.test_answer_keys for all to authenticated using (public.is_admin()) with check (public.is_admin());
+  end if;
+end $p$;
+-- Storage bucket for PDFs (admin uploads; students may only read question papers, never answer-key PDFs)
+do $st$ begin
+  if exists (select 1 from information_schema.schemata where schema_name='storage') then
+    insert into storage.buckets(id,name,public) values('test-pdfs','test-pdfs',false) on conflict (id) do nothing;
+    if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='pdfs_admin_all') then
+      create policy pdfs_admin_all on storage.objects for all to authenticated using (bucket_id='test-pdfs' and public.is_admin()) with check (bucket_id='test-pdfs' and public.is_admin());
+    end if;
+    if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='pdfs_student_paper_read') then
+      create policy pdfs_student_paper_read on storage.objects for select to authenticated using (bucket_id='test-pdfs' and name like 'tests/%/question-paper.pdf');
+    end if;
+  end if;
+end $st$;
+
 do $do$
 declare idt text; fn text;
 begin
@@ -314,3 +350,5 @@ do $r$ declare x record; begin
    ('start_test_attempt','save_attempt_answers','get_attempt_resume','submit_test_attempt','get_leaderboard','get_my_results','get_answer_key','publish_answer_key','admin_update_student','admin_grant_attempt','admin_force_submit','admin_invalidate_attempt','admin_archive_test','admin_test_stats','admin_audit')
   loop execute 'revoke all on function '||x.sig||' from public, anon'; execute 'grant execute on function '||x.sig||' to authenticated'; end loop;
 end $r$;
+
+notify pgrst, 'reload schema';
