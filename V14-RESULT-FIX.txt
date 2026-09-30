@@ -1,0 +1,9 @@
+V14 RESULT BUTTON FIX
+
+1. Run STUDENT-RESULT-BUTTON-V14.sql once in Supabase.
+2. Deploy this entire ZIP.
+3. Hard refresh / clear the old PWA cache once.
+
+Student test cards no longer use localStorage to decide whether Analysis / Result is clickable.
+Submitted attempts are loaded from Supabase. Re-attempt is rendered only when another attempt is actually available (including grants).
+If the answer key is not published yet, Analysis / Result still opens a persistent pending-result view instead of being disabled.

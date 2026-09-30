@@ -5,7 +5,7 @@
   const SUPABASE_KEY='sb_publishable_aiJYxr3AYoeZHBXwIoXaaQ_gIfHxV2s';
   const BUCKET='test-pdfs';
   const $=s=>document.querySelector(s);
-  let sb=null, tests=[], doneMap={}, activeAttemptId=null, finishing=false, syncTimer=null;
+  let sb=null, tests=[], doneMap={}, latestAttemptMap={}, grantMap={}, activeAttemptId=null, finishing=false, syncTimer=null;
 
   function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function parts(ms){ms=Math.max(0,ms);return {d:Math.floor(ms/86400000),h:Math.floor(ms%86400000/3600000),m:Math.floor(ms%3600000/60000),s:Math.floor(ms%60000/1000)}}
@@ -25,11 +25,18 @@
   function tz(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}
   function tiles(ms){const p=parts(ms);return [['d',p.d,'Days'],['h',p.h,'Hrs'],['m',p.m,'Min'],['s',p.s,'Sec']].map(([k,v,l])=>`<div><b data-u="${k}">${String(v).padStart(2,'0')}</b><small>${l}</small></div>`).join('')}
   function calLink(t){const s=new Date(t.release_at),e=new Date(s.getTime()+(Number(t.duration_minutes)||180)*60000),f=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.name)+'&dates='+f(s)+'/'+f(e)+'&details='+encodeURIComponent('MDCCCVII Tests - starts at the scheduled time.')}
-  function localDone(t){try{return (JSON.parse(localStorage.getItem('nta_hist')||'[]')||[]).filter(x=>x&&x.s&&Number(x.s.backendTestId)===Number(t.id))}catch(e){return[]}}
   function actions(t,r){
-    const loc=localDone(t),used=Math.max(doneMap[t.id]||0,loc.length),lim=1+Number(t.reattempt_limit||0),left=Math.max(0,lim-used);
-    if(!r||!used)return `<button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>`;
-    return `<div class="bt-dual"><button class="bt-btn" ${loc.length?'':'disabled title="Result was saved on another device"'} data-bt-result="${loc.length?esc2(loc[0].id):''}">Analysis / Result</button><button class="bt-btn alt" ${left?'':'disabled'} data-backend-test="${esc2(t.id)}">${left?'Re-attempt':'No attempts left'}</button></div>`}
+    const used=Number(doneMap[t.id]||0);
+    const lim=1+Number(t.reattempt_limit||0);
+    const granted=Number(grantMap[t.id]||0);
+    const left=Math.max(0,lim-used)+granted;
+    const latest=latestAttemptMap[t.id];
+    if(!r)return `<button class="bt-btn" disabled>Locked until start time</button>`;
+    if(!used && !latest)return `<button class="bt-btn" data-backend-test="${esc2(t.id)}">Start test</button>`;
+    const result=latest?`<button class="bt-btn" data-bt-result="${esc2(t.id)}" data-bt-attempt="${esc2(latest.id)}">Analysis / Result</button>`:'';
+    const retry=left>0?`<button class="bt-btn alt" data-backend-test="${esc2(t.id)}">Re-attempt</button>`:'';
+    return `<div class="bt-dual">${result}${retry}</div>`;
+  }
   function card(t){
     const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180,ra=Number(t.reattempt_limit||0);
     return `<article class="bt-card ${r?'is-live':''}">
@@ -49,8 +56,53 @@
     const feat=nx?`<article class="nt"><div><span class="bt-pill">Next up</span><h3>${esc2(nx.name)}</h3><p>${tz(nx.release_at)} · ${Number(nx.duration_minutes)||180} min · ${Number(nx.total_questions)||0} questions · ${Number(nx.total_marks)||0} marks</p><a class="bt-cal" href="${calLink(nx)}" target="_blank" rel="noopener">+ Add to calendar</a></div><div class="cd" data-cd="${esc2(nx.id)}"><span>Opens in</span><div class="cd-t big">${tiles(new Date(nx.release_at)-Date.now())}</div></div></article>`:'';
     box.innerHTML=feat+live.map(card).join('')+up.slice(1).map(card).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
-    box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.btResult&&typeof openH==='function')openH(Number(b.dataset.btResult))}));
+    box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>openBackendResult(Number(b.dataset.btResult),Number(b.dataset.btAttempt))));
   }
+  async function openBackendResult(testId,attemptId){
+    if(!testId)return;
+    try{
+      if(!sb)throw new Error('Please sign in again.');
+      const t=tests.find(x=>Number(x.id)===Number(testId));
+      let {data,error}=await sb.rpc('get_my_test_analysis',{p_test_id:testId});
+      if(error)throw error;
+      let rows=(data||[]).slice().sort((a,b)=>Number(a.question_no)-Number(b.question_no));
+      let keyPublished=rows.length>0;
+      if(!rows.length){
+        const fallback=await sb.rpc('get_my_attempt_result',{p_attempt_id:Number(attemptId)});
+        if(fallback.error)throw fallback.error;
+        rows=(fallback.data||[]).slice().sort((a,b)=>Number(a.question_no)-Number(b.question_no));
+        if(!rows.length)throw new Error('Your submitted result could not be loaded yet. Please try again in a moment.');
+      }
+      const per=Math.floor(Number(rows[0].total_questions||t?.total_questions||75)/3);
+      cfg.per=per;
+      cfg.dur=Number(rows[0].duration_minutes||t?.duration_minutes||180);
+      cfg.pos=Number(rows[0].positive_marks??t?.positive_marks??4);
+      cfg.negA=Number(rows[0].negative_mcq??t?.negative_mcq??1);
+      cfg.negB=Number(rows[0].negative_numerical??t?.negative_numerical??1);
+      setOrder('PCM');
+      const prof=getProfile();
+      const key=keyPublished?rows.map(x=>String(x.correct_response??'')):[];
+      const answers=rows.map(x=>String(x.response??''));
+      S={
+        id:Date.now(),
+        type:rows[0].test_name||t?.name||'Test',
+        name:prof.name||'Student',
+        photo:prof.photo||'',
+        roll:'',
+        cur:0,done:true,mode:'A',key,keyFromServer:true,man:[],
+        date:rows[0].submitted_at?new Date(rows[0].submitted_at).toLocaleString():new Date().toLocaleString(),
+        per,order:'PCM',backendTestId:testId,backendAttemptId:attemptId||Number(rows[0].attempt_id),
+        maxMarks:Number(rows[0].max_score??t?.total_marks??(Number(rows[0].total_questions||75)*cfg.pos)),
+        positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,
+        q:answers.map((a,i)=>({a,s:a===''?1:2,t:0}))
+      };
+      if(typeof showRes==='function')showRes();
+    }catch(e){
+      console.error('Remote result load failed:',e);
+      alert(e.message||'Could not load your result. Please try again.');
+    }
+  }
+
   function tick(){
     const box=container();if(!box)return;let flip=false;
     box.querySelectorAll('[data-cd]').forEach(el=>{const t=tests.find(x=>String(x.id)===el.dataset.cd);if(!t)return;const ms=new Date(t.release_at)-Date.now();if(ms<=0){flip=true;return}
@@ -64,7 +116,23 @@
     const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];
-    try{const uid=sessionData.session.user.id,{data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',uid).eq('status','submitted');doneMap={};(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1})}catch(e){console.warn('Attempt counts unavailable',e.message)}
+    try{
+      const uid=sessionData.session.user.id;
+      const {data:at,error:ae}=await sb.from('attempts').select('id,test_id,status,submitted_at').eq('user_id',uid);
+      if(ae)throw ae;
+      doneMap={}; latestAttemptMap={};
+      (at||[]).forEach(a=>{
+        if(a.status!=='submitted')return;
+        doneMap[a.test_id]=(doneMap[a.test_id]||0)+1;
+        const prev=latestAttemptMap[a.test_id];
+        if(!prev || new Date(a.submitted_at||0)>new Date(prev.submitted_at||0))latestAttemptMap[a.test_id]=a;
+      });
+    }catch(e){console.warn('Attempt status unavailable',e.message);doneMap={};latestAttemptMap={}}
+    grantMap={};
+    try{
+      const {data:st,error:se}=await sb.rpc('get_my_attempt_status');
+      if(!se)(st||[]).forEach(x=>{grantMap[x.test_id]=Number(x.granted_remaining||0)});
+    }catch(e){console.warn('Attempt grant status unavailable',e.message)}
     render();
   }
   async function launch(id){
