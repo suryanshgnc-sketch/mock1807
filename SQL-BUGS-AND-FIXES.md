@@ -33,3 +33,13 @@ Existing V10 database: run only `FINAL-PATCH-V10.2.sql`. Then re-publish each an
 | # | Item | Detail |
 |---|------|--------|
 | 13 | Students had no safe way to read the key | `get_answer_key(test_id)`: returns the key only if it is published AND the caller has a submitted attempt of that test; null otherwise; anon denied. Tested on bigint and uuid databases. |
+
+## Admin panel: why saving test changes failed (fixed)
+| # | Cause | Fix |
+|---|-------|-----|
+| 14 | After one successful save the "Save / Create" button stayed disabled until page refresh | Button re-enabled whenever the form resets (`admin/admin.js`) |
+| 15 | Editing a test that already has attempts re-sent locked fields (duration, marks, question count). The DB lock rejected the whole save, so even a rename failed | Locked tests now send only name, description, release time, re-attempts, leaderboard |
+| 16 | The DB lock compared against NULL columns, so filling a blank marks value was rejected | Lock only protects values that already exist |
+| 17 | Save silently did nothing if RLS blocked the update (0 rows changed, no error) | Admin now shows "Nothing was saved... check the RLS policy on tests" |
+| 18 | Paper-replace failure was ignored | Error is now shown |
+Note: duration, question count, marking scheme and paper are intentionally locked once any attempt exists; create a new test for those changes.

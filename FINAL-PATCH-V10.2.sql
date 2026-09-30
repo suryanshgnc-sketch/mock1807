@@ -294,10 +294,16 @@ create or replace function public.guard_test_version_changes() returns trigger l
 declare n integer;
 begin
   select count(*) into n from public.attempts where test_id=old.id;
-  if n>0 and (new.duration_minutes is distinct from old.duration_minutes or new.total_questions is distinct from old.total_questions or new.total_marks is distinct from old.total_marks
-    or new.positive_marks is distinct from old.positive_marks or new.negative_mcq is distinct from old.negative_mcq or new.negative_numerical is distinct from old.negative_numerical
-    or (to_jsonb(new)->>'paper_url') is distinct from (to_jsonb(old)->>'paper_url')) then
-    raise exception 'This test already has attempts. Scoring settings and question paper are locked. Create a new test/version instead.';
+  if n>0 and (
+    (old.duration_minutes is not null and new.duration_minutes is distinct from old.duration_minutes) or
+    (old.total_questions is not null and new.total_questions is distinct from old.total_questions) or
+    (old.total_marks is not null and new.total_marks is distinct from old.total_marks) or
+    (old.positive_marks is not null and new.positive_marks is distinct from old.positive_marks) or
+    (old.negative_mcq is not null and new.negative_mcq is distinct from old.negative_mcq) or
+    (old.negative_numerical is not null and new.negative_numerical is distinct from old.negative_numerical) or
+    ((to_jsonb(old)->>'paper_url') is not null and (to_jsonb(new)->>'paper_url') is distinct from (to_jsonb(old)->>'paper_url'))
+  ) then
+    raise exception 'This test already has attempts, so duration, question count, marking scheme and question paper are locked. Name, description, release time, re-attempts and leaderboard can still be edited.';
   end if;
   return new;
 end; $$;

@@ -64,3 +64,6 @@ New UI: live hero console (cursor, typing, palette, live ranking), scroll traile
 - Manual checking, key paste and key-PDF upload are removed. Checking unlocks only when the admin has published the key and the student has submitted the test.
 - New RPC `get_answer_key(test_id)` is in `FINAL-PATCH-V10.2.sql` (run the patch again after updating). Students get the key only after submitting; before that it returns null.
 - Tests started before this update have no stored test id, so their results page shows the locked state. New attempts work normally.
+
+## Home page motion (gravity)
+Hero: headline letters drop and bounce in, 18 neon symbols fall under real 2D physics (gravity, collisions, bounce), drag and throw them, double-click adds more, Zero-G / Reset buttons, cursor spotlight. Blocks lean with scroll speed. Touch devices: fewer symbols, no drag (so page scroll is never blocked). "Reduce motion" turns all of it off. Code: `js/gravity.js`, styles at the end of `css/cinematic.css`.
