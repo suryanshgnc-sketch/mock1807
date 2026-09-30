@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="css/site-ui.css">
 <link rel="stylesheet" href="css/cinematic.css?v=4">
 <link rel="stylesheet" href="css/result-centre.css?v=1">
+<link rel="stylesheet" href="css/home-hero.css?v=1">
 </head><body>
 <canvas id="mdfx" aria-hidden="true"></canvas>
 <div class="md-cursor" aria-hidden="true"></div><div class="md-cursor md-cursor-2" aria-hidden="true"></div>
@@ -32,22 +33,21 @@
  <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
  <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button></div></nav>
 <main class="x-main" id="top">
-<div class="x-hero"><div class="x-mark" aria-hidden="true">MDCCCVII</div>
- <div class="x-hero-in"><div class="x-copy">
-  <div class="x-tag"><i></i> MDCCCVII / 1807 · Test series live</div>
-  <h1><span class="hl"><span>Sit the exam.</span></span><span class="hl"><span class="gr">Earn the rank.</span></span></h1>
-  <p class="x-lead">Scheduled full-length JEE mock tests in an exam-grade interface. Scored on our servers, ranked live against every student on the same clock.</p>
-  <div class="x-cta"><a class="x-btn solid" href="#tests">View upcoming tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="x-btn ghost" href="#leaderboard">See leaderboard</a></div>
-  <div class="x-proof"><div><b data-n="180">0</b><small>minutes</small></div><div><b data-n="75">0</b><small>questions</small></div><div><b data-n="300">0</b><small>max marks</small></div></div>
-  <div id="profileBanner" class="profile-banner gl"></div></div>
- <div class="x-stage" aria-hidden="true"><div class="x-con"><div class="c-bar"><i></i><i></i><i></i><span>MOCK TEST 01 · SECTION A</span><b id="xTimer">02:59:41</b></div>
-  <div class="c-body"><div class="c-q"><small>Question <em id="xQn">14</em> of 75</small><p>A particle moves on the x-axis with v = 3t² − 6t. Its displacement in the first 3 s is:</p>
-   <div class="c-o"><s></s><span>A &nbsp;0 m</span></div><div class="c-o"><s></s><span>B &nbsp;3 m</span></div><div class="c-o"><s></s><span>C &nbsp;6 m</span></div><div class="c-o"><s></s><span>D &nbsp;9 m</span></div></div>
-   <div class="c-pal"><u style="--i:0"></u><u style="--i:1"></u><u style="--i:2"></u><u style="--i:3"></u><u style="--i:4"></u><u style="--i:5"></u><u style="--i:6"></u><u style="--i:7"></u><u style="--i:8"></u><u style="--i:9"></u><u style="--i:10"></u><u style="--i:11"></u><u style="--i:12"></u><u style="--i:13"></u><u style="--i:14"></u><u style="--i:15"></u><u style="--i:16"></u><u style="--i:17"></u><u style="--i:18"></u><u style="--i:19"></u><u style="--i:20"></u><u style="--i:21"></u><u style="--i:22"></u><u style="--i:23"></u><u style="--i:24"></u><u style="--i:25"></u><u style="--i:26"></u><u style="--i:27"></u><u style="--i:28"></u><u style="--i:29"></u></div></div>
-  <div class="c-foot"><span>Answered <b id="xAns">0</b>/30</span><em>Save &amp; Next</em></div></div>
-  <div class="x-rank"><small>LIVE RANKING · SAMPLE</small><ol id="xRank"></ol></div></div>
- </div></div>
-<div class="x-marq" aria-hidden="true"><div><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i><span>MDCCCVII</span><i>◆</i><span class="ol">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="ol">EARN THE RANK</span><i>◆</i></div></div>
+<section class="hx" id="top-hero"><div class="hx-bg" aria-hidden="true"><div class="hx-glow"></div><div class="hx-floor"></div><canvas id="hxCv"></canvas></div>
+<div class="hx-in"><div class="hx-copy">
+ <div class="hx-tag"><i></i>MDCCCVII / 1807 · TEST SERIES LIVE</div>
+ <h1 aria-label="Sit the exam. Earn the rank."><span class="hxl"><span>Sit the exam.</span></span><span class="hxl"><span>Earn the rank.</span></span></h1>
+ <p class="hx-lead">Scheduled full-length JEE mock tests in an exam-grade interface. Scored on our servers, ranked live against every student on the same clock.</p>
+ <div class="hx-cta"><a class="x-btn solid" href="#tests">View upcoming tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="x-btn ghost" href="#leaderboard">See leaderboard</a></div>
+ <div class="hx-stats"><div><b data-n="180">0</b><small>minutes</small></div><div><b data-n="75">0</b><small>questions</small></div><div><b data-n="300">0</b><small>max marks</small></div></div>
+ <div id="profileBanner" class="profile-banner gl"></div></div>
+<div class="hx-stage" aria-hidden="true"><div class="hx-orbit"></div>
+ <div class="hx-c hx-fl c1"><div class="top"><span>LIVE · MOCK 07</span><b class="tm">02:59:41</b></div><small>QUESTION 14 / 75 · PHYSICS</small><div class="q" style="--w:0s"></div><div class="q" style="width:82%;--w:.3s"></div><div class="q" style="width:56%;--w:.6s"></div><div class="opts"><i></i><i class="on"></i><i></i><i></i></div></div>
+ <div class="hx-c hx-fl c2"><small>ACCURACY</small><div class="hx-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="#17241a" stroke-width="9"/><circle class="rg" cx="50" cy="50" r="42" fill="none" stroke="#86ff3f" stroke-width="9" stroke-linecap="round"/></svg><b>82%</b></div></div>
+ <div class="hx-c hx-fl c3"><small>LIVE RANKING</small><ol class="hx-rk" style="padding:0;margin:10px 0 0"></ol></div>
+ <div class="hx-c hx-fl c4"><small>QUESTION PALETTE</small><div class="hx-pal"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div></div>
+ <span class="hx-chip a">+4 CORRECT</span><span class="hx-chip b">RANK ▲ 2</span></div></div></section>
+<div class="hx-strip" aria-hidden="true"><div><span>MDCCCVII</span><i>◆</i><span class="o">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="o">EARN THE RANK</span><i>◆</i><span>MDCCCVII</span><i>◆</i><span class="o">SIT THE EXAM</span><i>◆</i><span>1807</span><i>◆</i><span class="o">EARN THE RANK</span><i>◆</i></div></div>
 <div id="resumeBox" class="gl" hidden></div>
 <div id="homeCommandDeck" class="home-command-deck rv">
   <div class="deck-main"><div class="deck-kicker">YOUR COMMAND DECK · APP READY</div><h2>Everything you need before the clock starts.</h2><p id="deckSub">Your next scheduled test, recent activity and quick controls — in one place.</p><div class="deck-actions"><a class="x-btn solid" href="#tests">Browse tests <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><button class="x-btn ghost" id="deckInstall" type="button">Install as Web App</button></div></div>
@@ -129,6 +129,7 @@
 <script src="js/cbt-plus.js?v=1"></script>
 <script src="js/gravity.js?v=1"></script>
 <script src="js/result-centre.js?v=1"></script>
+<script src="js/home-hero.js?v=1"></script>
 <noscript><p style="position:fixed;bottom:0;left:0;right:0;padding:12px;text-align:center;background:#86ff3f;color:#061006;font:700 13px Inter,sans-serif">JavaScript is required to take tests on MDCCCVII.</p></noscript>
 
 <div id="installModal" class="install-modal" hidden aria-hidden="true">
