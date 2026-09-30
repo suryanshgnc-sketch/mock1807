@@ -1,26 +1,21 @@
 /* ============================================================
-   MDCCCVII TESTS — LIVE LEADERBOARD
+   MDCCCVII TESTS — LEADERBOARD
    ------------------------------------------------------------
-   Features:
    • Overall leaderboard
-   • Separate leaderboard for every test
-   • Best attempt per student per test
-   • Live refresh
-   • Refreshes after tab becomes visible
-   • Refresh button
-   • Automatic test-list refresh
-   • Auth-aware
-   • BIGINT test IDs
-   • No UUID conversion
+   • Separate leaderboard for each test
+   • Best attempt per student is handled by SQL RPC
+   • Live refresh every 10 seconds
+   • Refresh on tab return
+   • Manual refresh
+   • Works with existing HTML:
+       #lbSel
+       #lbRefresh
+       #lbBody
    ============================================================ */
 
 'use strict';
 
 (() => {
-
-  /* ==========================================================
-     DOM HELPERS
-     ========================================================== */
 
   const $ = (selector) =>
     document.querySelector(selector);
@@ -38,37 +33,16 @@
 
   let initialized = false;
 
-  let leaderboardTimer = null;
+  let liveTimer = null;
 
-  let testsTimer = null;
-
-  let loadingLeaderboard = false;
-
-  let loadingTests = false;
-
-  let lastSuccessfulLoad = 0;
+  let loading = false;
 
 
-  /*
-   * Leaderboard refresh interval.
-   *
-   * 10 seconds gives a "live" feeling without hammering
-   * Supabase on every second.
-   */
-  const LEADERBOARD_INTERVAL = 10000;
-
-
-  /*
-   * Test list refresh.
-   *
-   * This allows newly released/enabled tests to appear
-   * without requiring a page refresh.
-   */
-  const TESTS_INTERVAL = 30000;
+  const LIVE_INTERVAL = 10000;
 
 
   /* ==========================================================
-     SECURITY / HTML ESCAPING
+     ESCAPE HTML
      ========================================================== */
 
   const esc = (value) =>
@@ -85,7 +59,7 @@
 
 
   /* ==========================================================
-     NUMBER FORMATTING
+     FORMAT SCORE
      ========================================================== */
 
   const formatScore = (value) => {
@@ -102,12 +76,17 @@
   };
 
 
+  /* ==========================================================
+     FORMAT TIME
+     ========================================================== */
+
   const formatTime = (seconds) => {
 
-    const s = Math.max(
-      0,
-      Number(seconds) || 0
-    );
+    const s =
+      Math.max(
+        0,
+        Number(seconds) || 0
+      );
 
     const hours =
       Math.floor(s / 3600);
@@ -120,16 +99,12 @@
 
 
     if (hours > 0) {
-
-      return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+      return `${hours}h ${minutes}m`;
     }
-
 
     if (minutes > 0) {
-
-      return `${minutes}m ${String(secs).padStart(2, '0')}s`;
+      return `${minutes}m ${secs}s`;
     }
-
 
     return `${secs}s`;
   };
@@ -142,8 +117,9 @@
   const initials = (name) => {
 
     const clean =
-      String(name || 'Student')
-        .trim();
+      String(
+        name || 'Student'
+      ).trim();
 
 
     if (!clean) {
@@ -151,12 +127,12 @@
     }
 
 
-    const parts =
-      clean.split(/\s+/);
-
-
-    return parts
-      .map((part) => part[0])
+    return clean
+      .split(/\s+/)
+      .map(
+        (part) =>
+          part[0]
+      )
       .slice(0, 2)
       .join('')
       .toUpperCase();
@@ -176,9 +152,8 @@
           class="lb-av"
           src="${esc(row.photo_url)}"
           alt=""
-          loading="lazy"
           referrerpolicy="no-referrer"
-          onerror="this.style.display='none';"
+          onerror="this.style.display='none'"
         >
       `;
     }
@@ -204,6 +179,7 @@
     const box =
       $('#lbBody');
 
+
     if (!box) {
       return;
     }
@@ -218,117 +194,7 @@
 
 
   /* ==========================================================
-     LOADING STATE
-     ========================================================== */
-
-  function setLoading() {
-
-    const box =
-      $('#lbBody');
-
-    if (!box) {
-      return;
-    }
-
-
-    /*
-     * Don't destroy the existing leaderboard on every
-     * 10-second refresh. Only show the loading UI when
-     * there is currently no rendered leaderboard.
-     */
-    if (
-      box.dataset.hasLeaderboard === 'true'
-    ) {
-      return;
-    }
-
-
-    setMessage(
-      'Loading rankings…'
-    );
-  }
-
-
-  /* ==========================================================
-     NORMALIZE ROWS
-     ========================================================== */
-
-  function normalizeRows(rows) {
-
-    if (!Array.isArray(rows)) {
-      return [];
-    }
-
-
-    return rows
-      .map((row, index) => {
-
-        const rank =
-          Number(row?.rank);
-
-
-        const score =
-          Number(row?.score);
-
-
-        const maxScore =
-          Number(row?.max_score);
-
-
-        const correct =
-          Number(row?.correct_count);
-
-
-        const time =
-          Number(row?.time_taken_seconds);
-
-
-        return {
-
-          ...row,
-
-          rank:
-            Number.isFinite(rank)
-              ? rank
-              : index + 1,
-
-          score:
-            Number.isFinite(score)
-              ? score
-              : 0,
-
-          max_score:
-            Number.isFinite(maxScore)
-              ? maxScore
-              : 0,
-
-          correct_count:
-            Number.isFinite(correct)
-              ? correct
-              : 0,
-
-          time_taken_seconds:
-            Number.isFinite(time)
-              ? time
-              : 0,
-
-          is_me:
-            row?.is_me === true ||
-            row?.is_me === 'true'
-
-        };
-
-      })
-
-      .sort(
-        (a, b) =>
-          a.rank - b.rank
-      );
-  }
-
-
-  /* ==========================================================
-     RENDER
+     RENDER LEADERBOARD
      ========================================================== */
 
   function render(rows) {
@@ -336,22 +202,16 @@
     const box =
       $('#lbBody');
 
+
     if (!box) {
       return;
     }
 
 
-    const normalized =
-      normalizeRows(rows);
-
-
     if (
-      normalized.length === 0
+      !Array.isArray(rows) ||
+      rows.length === 0
     ) {
-
-      box.dataset.hasLeaderboard =
-        'false';
-
 
       setMessage(
         'No ranked attempts yet. Complete a test and submit it to appear here.'
@@ -361,23 +221,72 @@
     }
 
 
-    /*
-     * Mark that the UI has real data.
-     *
-     * This prevents the 10-second live refresh from flashing
-     * "Loading rankings…" every time.
-     */
-    box.dataset.hasLeaderboard =
-      'true';
+    const normalized =
+      rows
+        .map(
+          (row, index) => ({
 
+            ...row,
+
+            rank:
+              Number(row.rank) ||
+              index + 1,
+
+            score:
+              Number(row.score) || 0,
+
+            max_score:
+              Number(row.max_score) || 0,
+
+            correct_count:
+              Number(row.correct_count) || 0,
+
+            time_taken_seconds:
+              Number(
+                row.time_taken_seconds
+              ) || 0,
+
+            /*
+             * Supabase normally returns a real boolean.
+             */
+            is_me:
+              row.is_me === true ||
+              row.is_me === 'true'
+
+          })
+        )
+        .sort(
+          (a, b) =>
+            a.rank - b.rank
+        );
+
+
+    /* ========================================================
+       TOP 3
+       ======================================================== */
 
     const top =
       normalized.slice(0, 3);
 
 
+    const first =
+      top[0] || null;
+
+    const second =
+      top[1] || null;
+
+    const third =
+      top[2] || null;
+
+
+    /* ========================================================
+       CURRENT USER
+       ======================================================== */
+
     const me =
       normalized.find(
-        (row) => row.is_me
+        (row) =>
+          row.is_me
       );
 
 
@@ -412,38 +321,27 @@
               )
             ) * 100
           );
-
       }
     }
-
-
-    percentile =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          percentile
-        )
-      );
 
 
     /* ========================================================
        PODIUM
        ======================================================== */
 
-    const podium =
+    const podiumRows =
       [
-        top[1],
-        top[0],
-        top[2]
-      ]
+        second,
+        first,
+        third
+      ];
 
-      .filter(Boolean)
 
-      .map(
-        (row) => {
-
-          return `
+    const podium =
+      podiumRows
+        .filter(Boolean)
+        .map(
+          (row) => `
             <div class="pod p${Math.min(row.rank, 3)}">
 
               <span class="pod-rank">
@@ -453,8 +351,16 @@
               ${avatar(row)}
 
               <b>
-                ${esc(row.name || 'Student')}
-                ${row.is_me ? ' (You)' : ''}
+                ${esc(
+                  row.name ||
+                  'Student'
+                )}
+
+                ${
+                  row.is_me
+                    ? ' (You)'
+                    : ''
+                }
               </b>
 
               <em>
@@ -466,101 +372,95 @@
               </em>
 
             </div>
-          `;
-        }
-      )
-      .join('');
+          `
+        )
+        .join('');
 
 
     /* ========================================================
        TABLE
        ======================================================== */
 
-    const tableRows =
+    const table =
       normalized
-
-        .slice(0, 100)
-
+        .slice(0, 50)
         .map(
-          (row) => {
+          (row) => `
 
-            const medal =
-              row.rank === 1
-                ? '🥇'
-                : row.rank === 2
-                  ? '🥈'
-                  : row.rank === 3
-                    ? '🥉'
-                    : '';
+            <div
+              class="lb-row${row.is_me ? ' me' : ''}"
+            >
+
+              <span class="lb-rk">
+
+                ${
+                  row.rank === 1
+                    ? '🥇 '
+                    : row.rank === 2
+                      ? '🥈 '
+                      : row.rank === 3
+                        ? '🥉 '
+                        : ''
+                }
+
+                ${row.rank}
+
+              </span>
 
 
-            return `
-              <div
-                class="lb-row${row.is_me ? ' me' : ''}"
-                data-rank="${row.rank}"
-              >
+              <span class="lb-st">
 
-                <span class="lb-rk">
+                ${avatar(row)}
+
+                <span>
+                  ${esc(
+                    row.name ||
+                    'Student'
+                  )}
 
                   ${
-                    medal
-                      ? `${medal} `
+                    row.is_me
+                      ? ' <i>You</i>'
                       : ''
                   }
-
-                  ${row.rank}
-
                 </span>
 
-
-                <span class="lb-st">
-
-                  ${avatar(row)}
-
-                  <span>
-                    ${esc(row.name || 'Student')}
-
-                    ${
-                      row.is_me
-                        ? ' <i>You</i>'
-                        : ''
-                    }
-                  </span>
-
-                </span>
+              </span>
 
 
-                <span>
+              <span>
 
-                  <b>
-                    ${formatScore(row.score)}
-                  </b>
+                <b>
+                  ${formatScore(row.score)}
+                </b>
 
-                  /
+                /
 
-                  ${formatScore(row.max_score)}
+                ${formatScore(row.max_score)}
 
-                </span>
-
-
-                <span>
-                  ${row.correct_count}
-                </span>
+              </span>
 
 
-                <span>
-                  ${formatTime(row.time_taken_seconds)}
-                </span>
+              <span>
+                ${row.correct_count}
+              </span>
 
-              </div>
-            `;
-          }
+
+              <span>
+                ${formatTime(
+                  row.time_taken_seconds
+                )}
+              </span>
+
+            </div>
+
+          `
         )
         .join('');
 
 
     /* ========================================================
-       FINAL HTML
+       FINAL UI
        ======================================================== */
 
     box.innerHTML = `
@@ -568,6 +468,7 @@
       ${
         me
           ? `
+
             <div class="lb-me">
 
               <div>
@@ -616,20 +517,17 @@
               </div>
 
             </div>
+
           `
           : ''
       }
 
 
-      ${
-        podium
-          ? `
-            <div class="podium">
-              ${podium}
-            </div>
-          `
-          : ''
-      }
+      <div class="podium">
+
+        ${podium}
+
+      </div>
 
 
       <div class="lb-table">
@@ -659,55 +557,37 @@
         </div>
 
 
-        ${tableRows}
+        ${table}
 
       </div>
 
     `;
-
-
-    /*
-     * Small timestamp for debugging / future UI use.
-     */
-    box.dataset.updatedAt =
-      String(Date.now());
   }
 
 
   /* ==========================================================
-     CURRENT TEST ID
+     GET SELECTED TEST
      ========================================================== */
 
-  function getSelectedTestId() {
+  function getTestId() {
 
     if (
       selectedTest === 'all' ||
       selectedTest === '' ||
-      selectedTest === null ||
-      selectedTest === undefined
+      selectedTest == null
     ) {
+
       return null;
     }
 
 
-    /*
-     * Test IDs are BIGINT.
-     *
-     * Number is safe for normal Supabase IDs.
-     */
     const id =
       Number(selectedTest);
 
 
     if (
-      !Number.isSafeInteger(id) ||
-      id <= 0
+      !Number.isSafeInteger(id)
     ) {
-
-      console.error(
-        '[Leaderboard] Invalid test ID:',
-        selectedTest
-      );
 
       return undefined;
     }
@@ -722,38 +602,37 @@
      ========================================================== */
 
   async function loadLeaderboard(
-    options = {}
+    showLoading = true
   ) {
-
-    const {
-      showLoading = false
-    } = options;
-
-
-    if (!sb) {
-      return;
-    }
-
-
-    if (loadingLeaderboard) {
-      return;
-    }
-
 
     const box =
       $('#lbBody');
 
 
-    if (!box) {
+    if (
+      !box ||
+      !sb
+    ) {
       return;
     }
 
 
-    loadingLeaderboard = true;
+    /*
+     * Prevent overlapping requests.
+     */
+    if (loading) {
+      return;
+    }
+
+
+    loading = true;
 
 
     if (showLoading) {
-      setLoading();
+
+      setMessage(
+        'Loading rankings…'
+      );
     }
 
 
@@ -777,26 +656,27 @@
           sessionError
         );
 
+
         setMessage(
-          'Your session could not be verified. Please refresh the page.',
+          sessionError.message ||
+          'Could not verify your session.',
           'error'
         );
+
 
         return;
       }
 
 
       if (
-        !sessionData?.session
+        !sessionData ||
+        !sessionData.session
       ) {
-
-        box.dataset.hasLeaderboard =
-          'false';
-
 
         setMessage(
           'Sign in to view the leaderboard.'
         );
+
 
         return;
       }
@@ -807,7 +687,7 @@
          ------------------------------------------------------ */
 
       const testId =
-        getSelectedTestId();
+        getTestId();
 
 
       if (
@@ -818,6 +698,7 @@
           'Invalid test selection.',
           'error'
         );
+
 
         return;
       }
@@ -851,72 +732,53 @@
       if (error) {
 
         console.error(
-          '[Leaderboard] RPC error:',
+          '[Leaderboard] RPC ERROR:',
           error
         );
 
 
-        /*
-         * Don't destroy an already working leaderboard
-         * during a background refresh.
-         */
-        if (
-          box.dataset.hasLeaderboard !== 'true'
-        ) {
-
-          setMessage(
-            error.message ||
-              'Rankings are not available right now.',
-            'error'
-          );
-        }
+        setMessage(
+          error.message ||
+          'Leaderboard could not be loaded.',
+          'error'
+        );
 
 
         return;
       }
 
 
-      const rows =
-        Array.isArray(data)
-          ? data
-          : [];
-
-
       console.log(
-        '[Leaderboard] Rows received:',
-        rows.length
+        '[Leaderboard] Received:',
+        data
       );
 
 
-      render(rows);
-
-
-      lastSuccessfulLoad =
-        Date.now();
+      render(
+        Array.isArray(data)
+          ? data
+          : []
+      );
 
 
     } catch (error) {
 
       console.error(
-        '[Leaderboard] Unexpected error:',
+        '[Leaderboard] ERROR:',
         error
       );
 
 
-      if (
-        box.dataset.hasLeaderboard !== 'true'
-      ) {
+      setMessage(
+        error?.message ||
+        'Something went wrong while loading rankings.',
+        'error'
+      );
 
-        setMessage(
-          'Something went wrong while loading rankings.',
-          'error'
-        );
-      }
 
     } finally {
 
-      loadingLeaderboard =
-        false;
+      loading = false;
     }
   }
 
@@ -925,75 +787,63 @@
      LOAD TESTS
      ========================================================== */
 
-  async function loadTests(
-    preserveSelection = true
-  ) {
+  async function loadTests() {
 
     if (!sb) {
       return;
     }
 
 
-    if (loadingTests) {
-      return;
-    }
-
-
-    const selector =
-      $('#lbSel');
-
-
-    if (!selector) {
-      return;
-    }
-
-
-    loadingTests = true;
-
-
     try {
+
+      /*
+       * IMPORTANT:
+       *
+       * We intentionally keep this query almost identical
+       * to the working backend-tests.js query.
+       *
+       * No extra .or() filters.
+       */
 
       const {
         data,
         error
       } =
         await sb
-
           .from('tests')
-
           .select(
             'id,name,release_at,leaderboard_enabled,enabled,archived'
           )
-
           .eq(
             'enabled',
             true
           )
-
           .eq(
             'leaderboard_enabled',
             true
           )
-
-          .or(
-            'archived.is.null,archived.eq.false'
-          )
-
           .order(
             'release_at',
             {
-              ascending: false,
-              nullsFirst: false
+              ascending: false
             }
           );
 
 
       if (error) {
 
+        /*
+         * VERY IMPORTANT:
+         *
+         * Even if test discovery fails,
+         * the Overall leaderboard should still work.
+         */
+
         console.error(
           '[Leaderboard] Test list error:',
           error
         );
+
 
         return;
       }
@@ -1008,10 +858,18 @@
           .filter(
             (test) => {
 
+              if (
+                test.archived === true
+              ) {
+                return false;
+              }
+
+
               /*
-               * If there is no release time,
-               * show it immediately.
+               * No release time =
+               * immediately available.
                */
+
               if (
                 !test.release_at
               ) {
@@ -1025,26 +883,29 @@
                 ).getTime();
 
 
-              if (
-                Number.isNaN(release)
-              ) {
-                return false;
-              }
-
-
-              return release <= now;
+              return (
+                !Number.isNaN(release) &&
+                release <= now
+              );
             }
           );
 
 
+      const selector =
+        $('#lbSel');
+
+
+      if (!selector) {
+        return;
+      }
+
+
       /* ------------------------------------------------------
-         Preserve selected test
+         Remember previous selection
          ------------------------------------------------------ */
 
       const previous =
-        preserveSelection
-          ? String(selectedTest)
-          : 'all';
+        selectedTest;
 
 
       selector.innerHTML = `
@@ -1073,21 +934,24 @@
       `;
 
 
-      const validValues = [
-        'all',
-        ...tests.map(
-          (test) =>
-            String(test.id)
-        )
-      ];
+      const valid =
+        [
+          'all',
+          ...tests.map(
+            (test) =>
+              String(test.id)
+          )
+        ];
 
 
       if (
-        validValues.includes(previous)
+        valid.includes(
+          String(previous)
+        )
       ) {
 
         selectedTest =
-          previous;
+          String(previous);
 
       } else {
 
@@ -1101,14 +965,14 @@
 
 
       /* ------------------------------------------------------
-         Change handler
+         Change event
          ------------------------------------------------------ */
 
       if (
-        !selector.__lbBound
+        !selector.__leaderboardBound
       ) {
 
-        selector.__lbBound =
+        selector.__leaderboardBound =
           true;
 
 
@@ -1121,15 +985,9 @@
               'all';
 
 
-            console.log(
-              '[Leaderboard] Test changed:',
-              selectedTest
+            loadLeaderboard(
+              true
             );
-
-
-            loadLeaderboard({
-              showLoading: true
-            });
 
           }
         );
@@ -1139,14 +997,9 @@
     } catch (error) {
 
       console.error(
-        '[Leaderboard] Test list error:',
+        '[Leaderboard] Test loading exception:',
         error
       );
-
-    } finally {
-
-      loadingTests =
-        false;
     }
   }
 
@@ -1163,13 +1016,13 @@
 
     if (
       !button ||
-      button.__lbBound
+      button.__leaderboardBound
     ) {
       return;
     }
 
 
-    button.__lbBound =
+    button.__leaderboardBound =
       true;
 
 
@@ -1178,17 +1031,17 @@
       async () => {
 
         if (
-          button.dataset.loading === 'true'
+          button.dataset.busy === '1'
         ) {
           return;
         }
 
 
-        button.dataset.loading =
-          'true';
+        button.dataset.busy =
+          '1';
 
 
-        const originalHTML =
+        const old =
           button.innerHTML;
 
 
@@ -1198,20 +1051,19 @@
 
         try {
 
-          await loadTests(true);
+          await loadTests();
 
-          await loadLeaderboard({
-            showLoading: false
-          });
+          await loadLeaderboard(
+            false
+          );
 
         } finally {
 
-          button.dataset.loading =
-            'false';
-
+          button.dataset.busy =
+            '0';
 
           button.innerHTML =
-            originalHTML;
+            old;
         }
       }
     );
@@ -1219,63 +1071,27 @@
 
 
   /* ==========================================================
-     LIVE LEADERBOARD
+     LIVE REFRESH
      ========================================================== */
 
-  function startLiveUpdates() {
+  function startLiveRefresh() {
 
-    if (
-      leaderboardTimer
-    ) {
+    if (liveTimer) {
 
       clearInterval(
-        leaderboardTimer
+        liveTimer
       );
     }
 
 
-    leaderboardTimer =
+    liveTimer =
       setInterval(
         () => {
 
           /*
-           * Don't waste requests when the browser tab
-           * isn't visible.
+           * Don't make requests when the page
+           * is in another browser tab.
            */
-          if (
-            document.hidden
-          ) {
-            return;
-          }
-
-
-          loadLeaderboard();
-
-        },
-        LEADERBOARD_INTERVAL
-      );
-  }
-
-
-  /* ==========================================================
-     LIVE TEST LIST
-     ========================================================== */
-
-  function startTestListUpdates() {
-
-    if (
-      testsTimer
-    ) {
-
-      clearInterval(
-        testsTimer
-      );
-    }
-
-
-    testsTimer =
-      setInterval(
-        () => {
 
           if (
             document.hidden
@@ -1284,28 +1100,30 @@
           }
 
 
-          loadTests(true);
+          loadLeaderboard(
+            false
+          );
 
         },
-        TESTS_INTERVAL
+        LIVE_INTERVAL
       );
   }
 
 
   /* ==========================================================
-     TAB VISIBILITY
+     REFRESH WHEN RETURNING TO TAB
      ========================================================== */
 
-  function bindVisibilityRefresh() {
+  function bindVisibility() {
 
     if (
-      document.__lbVisibilityBound
+      document.__leaderboardVisibilityBound
     ) {
       return;
     }
 
 
-    document.__lbVisibilityBound =
+    document.__leaderboardVisibilityBound =
       true;
 
 
@@ -1320,76 +1138,57 @@
         }
 
 
-        /*
-         * When the user returns to the leaderboard,
-         * immediately get fresh data rather than waiting
-         * for the 10-second timer.
-         */
-        loadTests(true);
+        loadTests();
 
-        loadLeaderboard({
-          showLoading: false
-        });
-
+        loadLeaderboard(
+          false
+        );
       }
     );
   }
 
 
   /* ==========================================================
-     AUTH CHANGES
+     AUTH STATE
      ========================================================== */
 
-  function bindAuthListener() {
+  function bindAuth() {
 
     if (
       !sb ||
-      sb.__lbAuthBound
+      sb.__leaderboardAuthBound
     ) {
       return;
     }
 
 
-    sb.__lbAuthBound =
+    sb.__leaderboardAuthBound =
       true;
 
 
     sb.auth.onAuthStateChange(
       (_event, session) => {
 
-        /*
-         * Let Supabase finish updating local auth state.
-         */
         setTimeout(
           () => {
 
             if (!session) {
 
-              const box =
-                $('#lbBody');
-
-
-              if (box) {
-
-                box.dataset.hasLeaderboard =
-                  'false';
-              }
-
-
               setMessage(
                 'Sign in to view the leaderboard.'
               );
-
 
               return;
             }
 
 
-            loadTests(false);
-
-            loadLeaderboard({
-              showLoading: true
-            });
+            loadTests()
+              .then(
+                () =>
+                  loadLeaderboard(
+                    true
+                  )
+              );
 
           },
           150
@@ -1400,10 +1199,10 @@
 
 
   /* ==========================================================
-     INITIAL LOAD
+     INIT
      ========================================================== */
 
-  async function init() {
+  function init() {
 
     if (initialized) {
       return;
@@ -1415,8 +1214,10 @@
 
 
     /*
-     * auth.js may not have initialized yet.
+     * auth.js creates the Supabase client.
+     * Wait if it hasn't happened yet.
      */
+
     if (!client) {
 
       setTimeout(
@@ -1437,74 +1238,37 @@
 
 
     console.log(
-      '[Leaderboard] Initialized'
+      '[Leaderboard] MDCCCVII leaderboard initialized'
     );
 
 
     bindRefresh();
 
-    bindVisibilityRefresh();
+    bindVisibility();
 
-    bindAuthListener();
-
-
-    /*
-     * Initial data.
-     */
-    await loadTests(false);
-
-    await loadLeaderboard({
-      showLoading: true
-    });
+    bindAuth();
 
 
     /*
-     * Start live systems.
+     * Load the selector first,
+     * then the leaderboard.
      */
-    startLiveUpdates();
 
-    startTestListUpdates();
-
-  }
-
-
-  /* ==========================================================
-     CLEANUP
-     ========================================================== */
-
-  function cleanup() {
-
-    if (
-      leaderboardTimer
-    ) {
-
-      clearInterval(
-        leaderboardTimer
+    loadTests()
+      .finally(
+        () =>
+          loadLeaderboard(
+            true
+          )
       );
 
-      leaderboardTimer =
-        null;
-    }
 
+    /*
+     * Start live updates.
+     */
 
-    if (
-      testsTimer
-    ) {
-
-      clearInterval(
-        testsTimer
-      );
-
-      testsTimer =
-        null;
-    }
+    startLiveRefresh();
   }
-
-
-  window.addEventListener(
-    'beforeunload',
-    cleanup
-  );
 
 
   /* ==========================================================
@@ -1527,7 +1291,6 @@
   } else {
 
     init();
-
   }
 
 
