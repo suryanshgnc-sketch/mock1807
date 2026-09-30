@@ -142,27 +142,13 @@ function resume(){
  S=Store.get('nta_sess');if(!S)return;
  cfg.per=S.per;cfg.pos=Number(S.positiveMarks??cfg.pos);cfg.negA=Number(S.negativeMcq??cfg.negA);cfg.negB=Number(S.negativeNumerical??cfg.negB);setOrder(S.order||'PCM');
  if(S.done)return showRes();
- // Browser reload protection: three reloads maximum for one active attempt.
- // This is intentionally client-side only; the existing server remains authoritative.
- try{
-   const nav=performance.getEntriesByType?.('navigation')?.[0];
-   const isReload=nav?.type==='reload';
-   if(isReload){
-     const key='mdcccvii_reload_'+(S.backendAttemptId||S.id);
-     const count=Math.min(3,Number(sessionStorage.getItem(key)||0)+1);
-     sessionStorage.setItem(key,String(count));
-     S.reloadCount=count;saveSess();
-     if(count>=3){
-       setTimeout(()=>{if(S&&!S.done){alert('Reload limit reached. Your test will be submitted automatically.');finish()}},250);
-       return;
-     }
-   }
- }catch(e){}
- S.endAt=Date.now()+Math.max(0,Number(S.rem||0))*1000;
+ if(!S.serverExpiresAt) S.endAt=Date.now()+S.rem*1000;
  if(S.backendTestId && typeof window.resumeBackendTest==='function') window.resumeBackendTest(S);
  else begin();
 }
 function begin(){
+ // For server-backed CBT attempts, the backend expiry timestamp is authoritative.
+ if(S && S.serverExpiresAt){const __exp=Date.parse(S.serverExpiresAt);if(Number.isFinite(__exp))S.endAt=__exp;}
  $('#land').hidden=true;$('#res').hidden=true;$('#app').hidden=false;
  $('#cn').textContent=S.name;$('#cr').textContent=S.roll||'—'; const av=$('#candidatePhoto'); if(av)av.src=S.photo||'';
  clearInterval(timerId);timerId=setInterval(tick,1000);tick();render();if(pdfUrl)pdfView();else restorePdf();
@@ -170,8 +156,7 @@ function begin(){
 }
 function tick(){
  if(!S||S.done)return;
- const deadline=S.serverExpiresAt?new Date(S.serverExpiresAt).getTime():S.endAt;
- const rem=Math.max(0,Math.round((deadline-Date.now())/1000)),t=$('#timer');
+ const rem=Math.max(0,Math.round((S.endAt-Date.now())/1000)),t=$('#timer');
  if(t){t.textContent=fmt(rem);t.className=rem<300?'rd':rem<1800?'or':'';}
  S.rem=rem;
  if(S.q[S.cur])S.q[S.cur].t++;
