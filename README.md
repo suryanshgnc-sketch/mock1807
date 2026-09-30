@@ -45,10 +45,17 @@ Do not run the files inside `legacy-sql/` for the V10 build; they are retained o
 
 The server is now authoritative for exam time and submission state. The browser timer is only a display.
 
-## Hotfix: "column reference id is ambiguous" on Start Test
-If your database was already created, run `HOTFIX-START-TEST-AMBIGUOUS-ID.sql` once in Supabase SQL Editor.
-Fresh installs using the updated `RUN-ALL-SQL-V10.sql` already include the fix.
 
 ## Notes (final build)
 - Numerical answers were previously mis-scored by a regex escaping bug; fixed in all V10 SQL. If you already published keys, re-publish each once.
 - UI: cinematic layer (intro reel, scroll-scrubbed trailer, 3D tilt cards, confetti on results).
+
+## Attempt id type
+`attempts.id` is bigint in existing databases. The V10 SQL now uses bigint for attempt ids, and `HOTFIX-START-TEST-AMBIGUOUS-ID.sql` auto-detects the column type (uuid/bigint/integer) and recreates the functions to match. This fixes `invalid input syntax for type uuid: "17"`.
+
+## FINAL BUILD (V10.2)
+1. Fresh Supabase: run `RUN-ALL-SQL-V10.sql`, then `FINAL-PATCH-V10.2.sql`. Existing: only `FINAL-PATCH-V10.2.sql`.
+2. Re-publish each answer key once (re-scores old attempts).
+3. Read `SQL-BUGS-AND-FIXES.md` (includes the RLS checks to do in your dashboard).
+4. Hard refresh after deploying (`Ctrl+Shift+R`).
+New UI: live hero console (cursor, typing, palette, live ranking), scroll trailer, tilt cards. CBT: keyboard shortcuts (A-D/1-4, S, M, R, X, arrows), timer alerts at 10/5/1 min, progress bar, offline notice.

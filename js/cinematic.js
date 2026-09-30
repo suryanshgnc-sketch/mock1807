@@ -127,6 +127,53 @@ function confetti(){
  }
  var was=res.hidden;new MutationObserver(function(){if(was&&!res.hidden&&res.textContent.trim())burst();was=res.hidden}).observe(res,{attributes:true,attributeFilter:['hidden']});
 }
-function init(){intro();scroll();reveal();buttons();ambient();hero();trailer();confetti()}
+
+/* v3: live hero console director (scripted demo: cursor, typing, palette, live ranking) */
+function heroConsole(){
+ var con=$('.x-con');if(!con)return;
+ var cells=$$('.c-pal u',con),opts=$$('.c-o',con),qn=$('#xQn'),ans=$('#xAns'),qp=$('.c-q p',con),save=$('.c-foot em',con),rk=$('#xRank');
+ if(!cells.length||!rk)return;
+ var B=[['A particle moves on the x-axis with v = 3t\u00B2 \u2212 6t. Its displacement in the first 3 s is:',['0 m','3 m','6 m','9 m'],0],
+  ['The number of sigma bonds in ethene (C\u2082H\u2084) is:',['3','4','5','6'],2],
+  ['The value of \u222B\u2080\u00B9 2x dx is:',['0','1','2','4'],1],
+  ['The SI unit of magnetic flux is:',['Tesla','Weber','Henry','Gauss'],1],
+  ['The pH of a 0.01 M HCl solution is:',['1','2','3','12'],1]];
+ var names=['Aarav K.','Diya M.','Kabir S.','You'],sc,order=[0,1,2,3];
+ rk.innerHTML=names.map(function(n){return '<li class="'+(n==='You'?'me':'')+'"><b></b><span>'+n+'</span><em></em></li>'}).join('');
+ function reset(){sc=[236,228,221,214]}
+ function lay(flash){order=[0,1,2,3].sort(function(a,b){return sc[b]-sc[a]});order.forEach(function(pi,pos){var li=rk.children[pi];li.style.transform='translateY('+pos*30+'px)';li.firstChild.textContent='#'+(pos+1);li.lastChild.textContent=sc[pi]});
+  if(flash){var me=rk.children[3];me.classList.remove('flash');void me.offsetWidth;me.classList.add('flash')}}
+ reset();lay();
+ var cur=el('div','cine-cur','<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 2l16 9-7 2-3 7z" fill="#fff" stroke="#000" stroke-width="1.2"/></svg>');con.appendChild(cur);
+ function to(t){var a=con.getBoundingClientRect(),r=t.getBoundingClientRect();cur.style.transform='translate('+(r.left-a.left+r.width*.6)+'px,'+(r.top-a.top+r.height*.55)+'px)'}
+ function rip(t){var r=t.getBoundingClientRect(),p=el('span','cine-ripple');p.style.cssText='width:60px;height:60px;left:'+(r.width*.5-30)+'px;top:'+(r.height*.5-30)+'px';t.appendChild(p);setTimeout(function(){p.remove()},650)}
+ function sl(ms){return new Promise(function(r){setTimeout(r,ms)})}
+ var vis=true;new IntersectionObserver(function(e){vis=e[0].isIntersecting}).observe(con);
+ function type(t){return new Promise(function(res){var i=0;qp.textContent='';(function f(){qp.textContent=t.slice(0,i+=3);if(i<t.length)setTimeout(f,14);else{qp.textContent=t;res()}})()})}
+ function floatGain(txt,cls){var g=el('span','gain '+cls,txt);rk.children[3].appendChild(g);setTimeout(function(){g.remove()},1200)}
+ function paint(){cells.forEach(function(u,k){u.className=(st[k]||'')})}
+ var st=[],n=0;
+ async function run(){
+  for(;;){
+   if(!vis||document.hidden){await sl(600);continue}
+   var i=n%30;if(i===0){for(var k=cells.length-1;k>=0;k--){st[k]='';}paint();reset();lay();if(ans)ans.textContent=0}
+   var q=B[n%B.length];
+   cells.forEach(function(u){u.classList.remove('c')});cells[i].classList.add('c');
+   if(qn)qn.textContent=i+1;opts.forEach(function(o,k){o.classList.remove('on');o.lastChild.innerHTML='&#8202;'+'ABCD'[k]+' &nbsp;'+q[1][k]});
+   await type(q[0]);await sl(500);
+   var pick=Math.random()<.72?q[2]:(q[2]+1+(Math.random()*3|0))%4,marked=Math.random()<.2;
+   to(opts[pick]);await sl(750);rip(opts[pick]);opts.forEach(function(o){o.classList.remove('on')});opts[pick].classList.add('on');await sl(450);
+   to(save);await sl(700);save.classList.add('press');rip(save);await sl(160);save.classList.remove('press');
+   st[i]=marked?'m':'a';paint();cells[i].classList.add('c');
+   var done=st.filter(Boolean).length;if(ans)ans.textContent=done;
+   var right=pick===q[2],d=right?4:-1;sc[3]+=d;[0,1,2].forEach(function(k){sc[k]+=Math.random()<.5?4:0});
+   floatGain((d>0?'+':'')+d,right?'up':'dn');lay(right);
+   n++;await sl(700);
+  }
+ }
+ if(RM){cells.slice(0,12).forEach(function(u,k){u.className=k===7?'m':'a'});return}
+ run();
+}
+function init(){intro();scroll();reveal();buttons();ambient();hero();trailer();confetti();heroConsole()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

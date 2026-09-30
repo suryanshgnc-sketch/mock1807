@@ -18,8 +18,8 @@ const tm=$('#xTimer');if(tm){let s=3*3600-19;setInterval(()=>{s=s<=0?3*3600:s-1;
 const cells=$$('.c-pal u'),opts=$$('.c-o'),qn=$('#xQn'),ans=$('#xAns');let n=0,q=14;
 const step=()=>{const c=cells[n%cells.length];if(n%cells.length===0)cells.forEach(u=>u.className='');cells.forEach(u=>u.classList.remove('c'));c.className=(Math.random()<.2?'m':'a')+' c';if(ans)ans.textContent=cells.filter(u=>/a|m/.test(u.className)).length;
  opts.forEach(o=>o.classList.remove('on'));setTimeout(()=>opts[(Math.random()*4)|0].classList.add('on'),500);if(qn)qn.textContent=(q=q%75+1);n++};
-if(cells.length){step();if(!reduce)setInterval(step,2200)}
-const rk=$('#xRank');if(rk){const P=[['Aarav K.',296],['Diya M.',288],['You',281],['Kabir S.',274]];let order=[0,1,2,3],cnt=0;
+if(cells.length&&!window.__cineHero){step();if(!reduce)setInterval(step,2200)}
+const rk=$('#xRank');if(rk&&!window.__cineHero){const P=[['Aarav K.',296],['Diya M.',288],['You',281],['Kabir S.',274]];let order=[0,1,2,3],cnt=0;
  rk.innerHTML=P.map((p,i)=>`<li data-i="${i}" class="${p[0]==='You'?'me':''}"><b></b><span>${p[0]}</span><em>${p[1]}</em></li>`).join('');
  const lay=()=>order.forEach((pi,pos)=>{const li=rk.children[pi];li.style.transform=`translateY(${pos*30}px)`;li.firstChild.textContent='#'+(pos+1);li.lastChild.textContent=[296,288,281,274][pos]});lay();
  if(!reduce)setInterval(()=>{cnt++;const me=order.indexOf(2);if(cnt%2){if(me>0){[order[me-1],order[me]]=[order[me],order[me-1]]}}else{order=[0,1,2,3]}lay()},2600)}

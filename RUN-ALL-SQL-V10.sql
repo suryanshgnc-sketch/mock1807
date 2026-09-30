@@ -160,10 +160,16 @@ create index if not exists idx_audit_created on public.admin_audit_log(created_a
 -- ---------- ATTEMPT LIMIT + IMMUTABLE SNAPSHOT ----------
 drop trigger if exists trg_guard_test_attempt_limit on public.attempts;
 
+-- attempts.id is bigint: remove old uuid-typed overloads (they break PostgREST rpc)
+drop function if exists public.save_attempt_answers(uuid,jsonb);
+drop function if exists public.get_attempt_resume(uuid);
+drop function if exists public.submit_test_attempt(uuid,jsonb);
+drop function if exists public.admin_force_submit(uuid,text);
+drop function if exists public.admin_invalidate_attempt(uuid,text);
 drop function if exists public.start_test_attempt(bigint);
 create or replace function public.start_test_attempt(p_test_id bigint)
 returns table(
-  id uuid,
+  id bigint,
   test_id bigint,
   started_at timestamptz,
   expires_at timestamptz,
@@ -183,7 +189,7 @@ declare
   base_limit integer;
   grant_id bigint;
   grant_remaining integer;
-  new_id uuid;
+  new_id bigint;
   started timestamptz := now();
   expires timestamptz;
 begin
@@ -267,7 +273,7 @@ drop trigger if exists trg_guard_test_version_changes on public.tests;
 create trigger trg_guard_test_version_changes before update on public.tests for each row execute function public.guard_test_version_changes();
 
 -- ---------- ANSWER AUTOSAVE ----------
-create or replace function public.save_attempt_answers(p_attempt_id uuid,p_answers jsonb)
+create or replace function public.save_attempt_answers(p_attempt_id bigint,p_answers jsonb)
 returns boolean language plpgsql security definer set search_path=public as $$
 declare a public.attempts%rowtype; row jsonb;
 begin
@@ -286,13 +292,13 @@ begin
   end loop;
   return true;
 end; $$;
-grant execute on function public.save_attempt_answers(uuid,jsonb) to authenticated;
+grant execute on function public.save_attempt_answers(bigint,jsonb) to authenticated;
 
 -- ---------- SERVER RESUME ----------
-drop function if exists public.get_attempt_resume(uuid);
-create or replace function public.get_attempt_resume(p_attempt_id uuid)
+drop function if exists public.get_attempt_resume(bigint);
+create or replace function public.get_attempt_resume(p_attempt_id bigint)
 returns table(
-  id uuid,test_id bigint,status text,started_at timestamptz,expires_at timestamptz,
+  id bigint,test_id bigint,status text,started_at timestamptz,expires_at timestamptz,
   duration_minutes integer,total_questions integer,positive_marks numeric,negative_mcq numeric,
   negative_numerical numeric,answers jsonb
 )
@@ -304,12 +310,12 @@ select a.id,a.test_id,a.status,a.started_at,a.expires_at,a.duration_minutes_snap
 from public.attempts a
 where a.id=p_attempt_id and a.user_id=auth.uid() and a.status='in_progress';
 $$;
-grant execute on function public.get_attempt_resume(uuid) to authenticated;
+grant execute on function public.get_attempt_resume(bigint) to authenticated;
 
 -- ---------- ATOMIC SUBMISSION ----------
-drop function if exists public.submit_test_attempt(uuid,jsonb);
-create or replace function public.submit_test_attempt(p_attempt_id uuid,p_answers jsonb)
-returns table(id uuid,status text,submitted_at timestamptz,time_taken_seconds bigint)
+drop function if exists public.submit_test_attempt(bigint,jsonb);
+create or replace function public.submit_test_attempt(p_attempt_id bigint,p_answers jsonb)
+returns table(id bigint,status text,submitted_at timestamptz,time_taken_seconds bigint)
 language plpgsql security definer set search_path=public as $$
 #variable_conflict use_column
 declare a public.attempts%rowtype; submitted timestamptz:=now(); elapsed bigint; row jsonb;
@@ -330,7 +336,7 @@ begin
   update public.attempts set status='submitted',submitted_at=submitted,unanswered_count=greatest(0,coalesce(a.total_questions_snapshot,0)-(select count(*) from public.answers where attempt_id=a.id and response is not null and response<>'')),time_taken_seconds=elapsed where id=a.id;
   return query select a.id,'submitted'::text,submitted,elapsed;
 end; $$;
-grant execute on function public.submit_test_attempt(uuid,jsonb) to authenticated;
+grant execute on function public.submit_test_attempt(bigint,jsonb) to authenticated;
 
 -- ---------- ADMIN HELPERS ----------
 create or replace function public.admin_update_student(p_user_id uuid,p_name text,p_blocked boolean)
@@ -355,7 +361,7 @@ begin
 end; $$;
 grant execute on function public.admin_grant_attempt(uuid,bigint,integer,text) to authenticated;
 
-create or replace function public.admin_force_submit(p_attempt_id uuid,p_reason text default null)
+create or replace function public.admin_force_submit(p_attempt_id bigint,p_reason text default null)
 returns boolean language plpgsql security definer set search_path=public as $$
 begin
   if not public.is_admin() then raise exception 'Admins only'; end if;
@@ -363,9 +369,9 @@ begin
   insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'force_submit','attempt',p_attempt_id::text,jsonb_build_object('reason',p_reason));
   return true;
 end; $$;
-grant execute on function public.admin_force_submit(uuid,text) to authenticated;
+grant execute on function public.admin_force_submit(bigint,text) to authenticated;
 
-create or replace function public.admin_invalidate_attempt(p_attempt_id uuid,p_reason text default null)
+create or replace function public.admin_invalidate_attempt(p_attempt_id bigint,p_reason text default null)
 returns boolean language plpgsql security definer set search_path=public as $$
 begin
   if not public.is_admin() then raise exception 'Admins only'; end if;
@@ -373,7 +379,7 @@ begin
   insert into public.admin_audit_log(admin_user_id,action,target_type,target_id,details) values(auth.uid(),'invalidate_attempt','attempt',p_attempt_id::text,jsonb_build_object('reason',p_reason));
   return true;
 end; $$;
-grant execute on function public.admin_invalidate_attempt(uuid,text) to authenticated;
+grant execute on function public.admin_invalidate_attempt(bigint,text) to authenticated;
 
 create or replace function public.admin_archive_test(p_test_id bigint)
 returns boolean language plpgsql security definer set search_path=public as $$
