@@ -70,7 +70,8 @@
           <label>Negative marks · MCQ<input name="negativeA" type="number" min="0" step="0.5" value="1" required></label>
           <label>Negative marks · Numerical<input name="negativeB" type="number" min="0" step="0.5" value="1" required></label>
           <label class="wide file-field">Question paper PDF<input name="paper" type="file" accept="application/pdf"><small id="paperHint">Required when creating a test. Leave empty while editing to keep the current paper.</small><small>Private admin storage. Students receive the paper through the CBT when the test is released.</small></label>
-          <label class="wide file-field">Answer key / solutions PDF<input name="key" type="file" accept="application/pdf"><small id="keyHint">Required when creating a test. Leave empty while editing to keep the current key.</small><small>Kept in the private admin storage bucket. It is not exposed to students.</small></label>
+          <label class="wide file-field">Answer key / solutions PDF<input name="key" type="file" accept="application/pdf"><small id="keyHint">Required when creating a test. Leave empty while editing to keep the current key.</small><small>Students can open this PDF (key + solutions) right after they submit the test.</small></label>
+          <label class="wide">Answer sequence for automatic checking (optional)<textarea name="keyText" rows="3" placeholder="e.g. 1 3 2 4 ... or A C B D ... (numerical answers as numbers, in question order)"></textarea><small>If filled, every submitted attempt is checked and ranked automatically, now and for all future submissions.</small></label>
         </div>
         <div id="uploadProgress" class="progress hidden"><div class="progress-bar"></div><span>Uploading…</span></div>
         <div id="formError" class="error hidden"></div>

@@ -85,3 +85,18 @@ body:has(#res:not([hidden])){background:#050706!important}
 .rc-empty{padding:30px;text-align:center;color:#71827a}
 @media(max-width:760px){.rc-cards,.rc-hero{grid-template-columns:1fr}.rc-hero{justify-items:center}.rc-stats{grid-template-columns:repeat(2,1fr);width:100%}.rc-row{grid-template-columns:54px 1fr 1fr 44px}.rc-row .ty,.rc-row .tm{display:none}.rc-top{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.rc *{animation:none!important;transition:none!important}}
+/* professional result-centre layout */
+#res:not([hidden]){max-width:none!important;padding:0!important;margin:0!important;width:100%}
+.cine-confetti{display:none!important}
+.rc header.rc-top{position:sticky;top:0;z-index:5;display:flex!important;align-items:center;gap:18px;max-width:none;height:auto!important;margin:0;padding:14px max(20px,calc((100% - 1100px)/2))!important;background:#070b08e6!important;backdrop-filter:blur(14px);border:0!important;border-bottom:1px solid var(--ln)!important;box-shadow:none!important;color:#f2f6f0!important}
+.rc-top .rc-id{flex:1;min-width:0}.rc-top .rc-id small{display:block;font:700 10px 'JetBrains Mono',monospace;letter-spacing:.2em;color:var(--g)}
+.rc header.rc-top h1{margin:3px 0 0;font:800 20px/1.1 'Bricolage Grotesque',Inter,sans-serif;letter-spacing:-.01em;color:#f2f6f0!important;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-meta{text-align:right;font-size:12px;color:#8fa093;display:grid;gap:2px}.rc-meta b{color:#dfe9dc;font-size:13px}
+.rc-back{padding:9px 14px;font-size:12.5px}
+.rc-main{padding-top:36px}
+.rc-center{max-width:600px;margin:20px auto 0;padding:44px 32px 36px;border:1px solid var(--ln);border-radius:24px;background:linear-gradient(180deg,#0b120d,#070b08);box-shadow:0 40px 80px -40px #000}
+.rc-center .rc-ill{width:170px;animation:none}
+.rc-center h2{font-size:clamp(22px,3vw,30px)}
+@media(max-width:640px){.rc-meta{display:none}}
+.rc-center .rc-ill{display:block;margin:0 auto 16px}
+.rc-center>.rc-tag{display:flex;width:max-content;margin:0 auto}

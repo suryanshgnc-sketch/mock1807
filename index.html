@@ -23,15 +23,15 @@
 <link rel="stylesheet" href="css/cbt-pro.css">
 <link rel="stylesheet" href="css/site-ui.css">
 <link rel="stylesheet" href="css/cinematic.css?v=4">
-<link rel="stylesheet" href="css/result-centre.css?v=1">
-<link rel="stylesheet" href="css/home-hero.css?v=1">
+<link rel="stylesheet" href="css/result-centre.css?v=2">
+<link rel="stylesheet" href="css/home-hero.css?v=3">
 </head><body>
 <canvas id="mdfx" aria-hidden="true"></canvas>
 <div class="md-cursor" aria-hidden="true"></div><div class="md-cursor md-cursor-2" aria-hidden="true"></div>
 <div id="land">
 <nav class="x-nav" id="xNav"><a class="x-brand" href="#top" aria-label="MDCCCVII Tests home"><img src="assets/mdcccvii-logo.png" alt=""><span><b>MDCCCVII</b><small>TESTS · 1807</small></span></a>
  <div class="x-links"><a href="#tests">Tests</a><a href="#method">Method</a><a href="#leaderboard">Rankings</a><a href="#progress">Progress</a><a href="#faq">FAQ</a></div>
- <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button></div></nav>
+ <div class="x-act"><span id="profileChip"></span><button class="x-btn ghost" onclick="profileSetup()">Profile</button><button class="x-btn ghost" onclick="settings()">Settings</button><button class="x-btn ghost" id="logoutBtn" type="button">Log out</button><button class="x-btn solid install-app-btn" id="installAppBtn" type="button">Install as Web App</button></div></nav>
 <main class="x-main" id="top">
 <section class="hx" id="top-hero"><div class="hx-bg" aria-hidden="true"><div class="hx-glow"></div><div class="hx-floor"></div><canvas id="hxCv"></canvas></div>
 <div class="hx-in"><div class="hx-copy">
@@ -117,7 +117,7 @@
 <script src="js/app.js"></script>
 <script src="js/analysis.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/backend-tests.js?v=6"></script>
+<script src="js/backend-tests.js?v=7"></script>
 <script src="js/leaderboard.js"></script>
 <script src="js/motion.js"></script>
 <script src="js/mdcccvii-v3.js"></script>
@@ -128,8 +128,9 @@
 <script src="js/cinematic.js?v=3"></script>
 <script src="js/cbt-plus.js?v=1"></script>
 <script src="js/gravity.js?v=1"></script>
-<script src="js/result-centre.js?v=1"></script>
-<script src="js/home-hero.js?v=1"></script>
+<script src="js/result-centre.js?v=3"></script>
+<script src="js/home-hero.js?v=2"></script>
+<script src="js/logout.js?v=1"></script>
 <noscript><p style="position:fixed;bottom:0;left:0;right:0;padding:12px;text-align:center;background:#86ff3f;color:#061006;font:700 13px Inter,sans-serif">JavaScript is required to take tests on MDCCCVII.</p></noscript>
 
 <div id="installModal" class="install-modal" hidden aria-hidden="true">

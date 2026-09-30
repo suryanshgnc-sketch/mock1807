@@ -283,7 +283,7 @@ function drawRes(){
  const loaded=S.key.length===N();
  const keyText=S.key.join(',');
  $('#res').innerHTML=`<div class="results-shell">
- <div class="result-top"><div><span class="pill">POST-TEST WORKSPACE</span><h1>Response Sheet &amp; Evaluation</h1><p class="mut">${esc(S.name)} · ${esc(S.type||'Test')} · ${esc(S.date)}</p></div><button class="btn w" onclick="home()">Home</button></div>
+ <div class="result-top"><div><span class="pill">POST-TEST WORKSPACE</span><h1>Response Sheet &amp; Evaluation</h1><p class="mut">${esc(S.name)} · ${esc(S.type||'Test')} · ${esc(S.date)}</p></div><button class="btn w" onclick="goHome()">Home</button></div>
  <div class="check-choice">
   <button class="check-card ${S.mode==='A'?'active':''}" onclick="S.mode='A';drawRes()"><span>⚡</span><b>Automatic Checking</b><small>Paste one comma-separated key. A/B/C/D and 1/2/3/4 are both accepted.</small></button>
   <button class="check-card ${S.mode==='B'?'active':''}" onclick="S.mode='B';drawRes()"><span>▣</span><b>Manual Checking</b><small>Upload the answer-key PDF and verify responses beside it.</small></button>

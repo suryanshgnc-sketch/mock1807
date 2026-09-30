@@ -18,7 +18,7 @@ var ILL={
  bolt:'<svg viewBox="0 0 64 64" width="54" height="54" fill="none" stroke="#86ff3f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M36 6L14 36h16l-4 22 24-32H34z" fill="#86ff3f22"/></svg>'
 };
 function bg(){return '<div class="rc-bg"><i></i><i></i><i></i><span></span></div>'}
-function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="home()">\u2190 Home</button><div><span class="rc-pill">RESULT CENTRE</span><h1>'+esc(S.name||'Student')+'</h1><p>'+esc(S.type||'Test')+' \u00B7 '+esc(S.date||'')+'</p></div>'+(sub||'')+'</header>'}
+function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="goHome()">\u2190 Home</button><div class="rc-id"><small>RESULT CENTRE</small><h1>'+esc(S.name||'Student')+'</h1></div><div class="rc-meta"><b>'+esc(S.type||'Test')+'</b><span>'+esc(S.date||'')+'</span></div>'+(sub||'')+'</header>'}
 /* ---- key fetch ---- */
 async function fetchKey(){
  if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';return}
@@ -31,11 +31,31 @@ async function fetchKey(){
   else{RC.st='locked';RC.why='pending'}
  }catch(e){RC.st='locked';RC.why='pending';RC.err=e&&e.message}
 }
+
+/* ---- response sheet (works right after submit, no key needed) + admin solutions PDF ---- */
+function subName(i){return String(SUB[sub(i)]||'')}
+window.downloadResponses=function(){
+ var rows='',att=0;
+ for(var i=0;i<S.q.length;i++){var a=S.q[i].a,has=String(a==null?'':a).trim()!=='';if(has)att++;
+  rows+='<tr><td>'+(i%cfg.per+1)+'</td><td>'+esc(subName(i))+'</td><td>'+(isNum(i)?'Numerical':'MCQ')+'</td><td><b>'+esc(disp(i,a))+'</b></td><td>'+(has?'Attempted':'Not attempted')+'</td><td>'+fmtT(S.q[i].t||0)+'</td></tr>'}
+ var html='<!doctype html><html><head><meta charset="utf-8"><title>Response Sheet - '+esc(S.name||'')+'</title><style>@page{margin:14mm}body{font:12px Arial,sans-serif;color:#111;margin:0}h1{margin:0 0 4px;font-size:20px}.m{display:flex;gap:26px;flex-wrap:wrap;margin:10px 0 16px;padding:10px 0;border-block:2px solid #111}.m div span{display:block;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.06em}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:5px 7px;text-align:left}th{background:#eee}tr:nth-child(even) td{background:#fafafa}.f{margin-top:12px;color:#666;font-size:10px}</style></head><body><h1>Response Sheet</h1><div class="m"><div><span>Candidate</span>'+esc(S.name||'')+'</div><div><span>Test</span>'+esc(S.type||'')+'</div><div><span>Date</span>'+esc(S.date||'')+'</div><div><span>Attempted</span>'+att+' / '+S.q.length+'</div></div><table><tr><th>Q</th><th>Subject</th><th>Type</th><th>Your answer</th><th>Status</th><th>Time</th></tr>'+rows+'</table><p class="f">MDCCCVII Tests. Independent practice platform, not affiliated with NTA.</p></body></html>';
+ var w=window.open('','_blank');
+ if(w){w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print()},400)}
+ else{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='Response-Sheet-'+(S.type||'test')+'.html';document.body.appendChild(a);a.click();a.remove()}
+};
+window.RCsolutions=async function(){
+ var c=window.mock1807Auth&&window.mock1807Auth.client;if(!c||!S.backendTestId)return alert('Solutions are available for scheduled tests only.');
+ var w=window.open('','_blank');
+ try{var r=await c.storage.from('test-pdfs').createSignedUrl('tests/'+S.backendTestId+'/answer-key.pdf',3600);
+  if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
+ catch(e){if(w)w.close();alert('The key / solutions PDF is not available for this test yet.')}
+};
+function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions (PDF)</button>':'')}
 /* ---- views ---- */
 function vLoading(){return '<div class="rc-center">'+ILL.lock+'<h2>Checking the vault\u2026</h2><div class="rc-scan"><i></i></div></div>'}
 function vLocked(){
  var p=RC.why==='practice';
- return '<div class="rc-center">'+ILL.lock+'<span class="rc-tag lock">LOCKED</span><h2>'+(p?'Checking is for official tests':'Answer key not released yet')+'</h2><p>'+(p?'Practice sessions have no official key. Take an official mock test to unlock automatic checking.':'Your responses are saved. Checking and the answer key unlock automatically the moment the admin uploads the official key.')+'</p><div class="rc-actions">'+(p?'':'<button class="rc-btn solid" onclick="RCrefresh()">Check again</button>')+'<button class="rc-btn" onclick="home()">Back to home</button></div>'+(RC.err&&!p?'<small class="rc-err">'+esc(RC.err)+'</small>':'')+'</div>'
+ return '<div class="rc-center">'+ILL.lock+'<span class="rc-tag lock">LOCKED</span><h2>'+(p?'Checking is for official tests':'Answer key not released yet')+'</h2><p>'+(p?'Practice sessions have no official key. Take an official mock test to unlock automatic checking.':'Your responses are saved. Checking and the answer key unlock automatically the moment the admin publishes the official key. This page checks by itself, no need to refresh.')+'</p><div class="rc-actions">'+pdfBtns()+'</div><div class="rc-actions" style="margin-top:12px">'+(p?'':'<button class="rc-btn solid" onclick="RCrefresh()">Check again</button>')+'<button class="rc-btn" onclick="goHome()">Back to home</button></div>'+(RC.err&&!p?'<small class="rc-err">'+esc(RC.err)+'</small>':'')+'</div>'
 }
 function vHome(){
  return '<div class="rc-center">'+ILL.shield+'<span class="rc-tag ok"><i></i>ANSWER KEY PUBLISHED</span><h2>Your paper is ready to check</h2><p>The official key is loaded from the server. Choose how you want to continue.</p></div>'+
@@ -46,7 +66,7 @@ function tabs(){return '<div class="rc-tabs">'+SUB.map(function(n,k){return '<bu
 function vKey(){
  var per=cfg.per,a=RC.sec*per,h='';
  for(var i=a;i<a+per;i++){var yr=S.q[i].a;h+='<div class="rc-chip'+(isNum(i)?' num':'')+'" style="--d:'+((i-a)*22)+'ms"><span>Q'+(i-a+1)+'</span><b>'+esc(disp(i,S.key[i]))+'</b><small>'+(yr===''?'not attempted':'you: '+esc(disp(i,yr)))+'</small></div>'}
- return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></span></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
 }
 function vResult(){
  var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0;
@@ -55,7 +75,7 @@ function vResult(){
  var subs=sm.subs.map(function(x,k){var mx=cfg.per*cfg.pos,p=Math.max(0,x.m)/mx*100;return '<div class="rc-sub" style="--a:'+COL[k%3]+'"><div class="rc-sub-h"><b>'+esc(x.n)+'</b><span data-count="'+x.m+'">0</span></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' \u2713</span><span class="r">'+x.w+' \u2717</span><span>'+x.u+' \u2014</span><span>'+x.acc+'% acc</span><span>'+mm(x.t)+'</span></div></div>'}).join('');
  var pal=SUB.map(function(n,k){var s='';for(var i=k*cfg.per;i<(k+1)*cfg.per;i++){var r=E[i].r;s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*18)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>'}return '<div class="rc-pal-sec"><small style="color:'+COL[k%3]+'">'+esc(n)+'</small><div class="rc-pal">'+s+'</div></div>'}).join('');
  var seg=function(v,cl){return '<i class="'+cl+'" style="--w:'+(v/tot*100)+'%"></i>'};
- return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><button class="rc-btn" onclick="downloadReport()">Download response sheet</button></div>'+
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn" onclick="downloadReport()">Download response sheet</button></span></div>'+
  '<div class="rc-hero"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pct))+'" transform="rotate(-90 65 65)">'+'</circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div>'+
  '<div class="rc-stats"><div class="s ok"><b data-count="'+c+'">0</b><span>Correct</span></div><div class="s bad"><b data-count="'+w+'">0</b><span>Incorrect</span></div><div class="s na"><b data-count="'+u+'">0</b><span>Unattempted</span></div><div class="s"><b data-count="'+sm.acc+'" data-suf="%">0</b><span>Accuracy</span></div><div class="s wide"><b>'+fmtT(t)+'</b><span>Time on questions</span></div></div></div>'+
  '<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
@@ -80,11 +100,13 @@ function count(root){
 }
 function draw(){
  var res=q('#res');if(!res)return;
- if(RC.sid!==S.id){RC={sid:S.id,st:'loading',view:'home',filter:'all',sec:0};fetchKey().then(function(){draw()})}
+ if(RC.sid!==S.id){RC={sid:S.id,st:'loading',view:'home',filter:'all',sec:0};fetchKey().then(function(){if(RC.st==='ready'&&RC.view==='home')RCcheck();else draw()})}
+ clearInterval(RC.poll);if(RC.st==='locked'&&RC.why==='pending'&&!res.hidden)RC.poll=setInterval(function(){if(document.hidden)return;var rr=q('#res');if(!rr||rr.hidden){clearInterval(RC.poll);return}var sid=RC.sid;fetchKey().then(function(){if(RC.sid===sid&&RC.st==='ready'){clearInterval(RC.poll);RCcheck()}})},15000);
  var body=RC.st==='loading'?vLoading():RC.st==='locked'?vLocked():RC.view==='key'?vKey():RC.view==='result'?vResult():vHome();
  res.innerHTML='<div class="rc">'+bg()+top()+'<main class="rc-main">'+body+'</main><div id="dash" hidden></div></div>';
  res.scrollTop=0;window.scrollTo(0,0);count(res);
 }
+window.goHome=function(){clearInterval(RC.poll);var l=q('#land'),r=q('#res'),a=q('#app');if(r)r.hidden=true;if(a)a.hidden=true;if(l)l.hidden=false;try{home()}catch(e){}try{window.refreshBackendTests&&window.refreshBackendTests()}catch(e){}window.scrollTo(0,0)};
 window.drawRes=draw;
 window.RCview=function(v){RC.view=v;draw()};
 window.RCsec=function(k){RC.sec=k;draw()};

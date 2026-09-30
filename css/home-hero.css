@@ -66,3 +66,13 @@
 @media(max-width:960px){.hx{padding-top:96px}.hx-in{grid-template-columns:1fr}.hx-stage{height:520px;max-width:560px;margin:0 auto;width:100%}.hx-stats{gap:22px}}
 @media(max-width:520px){.hx-stage{height:480px}.c1{width:74%}.c2{width:50%}.c3,.c4{width:52%}.hx-orbit{display:none}}
 @media(prefers-reduced-motion:reduce){.hx *,.hx *:before,.hx *:after{animation-duration:.01s!important;animation-iteration-count:1!important}.hx h1 .hxl>span,.hx-lead,.hx-cta,.hx-stats,.hx-c,.hx-chip{opacity:1!important;transform:none!important}}
+/* test card dual actions */
+.bt-dual{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bt-dual .bt-btn{width:100%;margin:0}
+.bt-btn.alt{background:transparent!important;color:var(--g2)!important;border:1px solid var(--ln2)!important}.bt-btn.alt:after{display:none}
+.bt-btn.alt:not([disabled]):hover{background:#86ff3f1a!important}
+
+/* calm, stable mockup motion */
+.hx-pal{transition:opacity .6s}.hx-pal.fade{opacity:0}
+.hx-pal u{transform:scale(.86);transition:background .5s,transform .5s cubic-bezier(.2,1.4,.4,1),box-shadow .5s}.hx-pal u.a,.hx-pal u.m{transform:scale(1)}
+.hx-rk li{transition:transform 1.1s cubic-bezier(.65,0,.25,1),background .6s}
+.c1{height:auto}.hx-c{will-change:transform}
