@@ -47,24 +47,6 @@ function saveProfile(){
 let cfg={pos:4,negA:1,negB:1,dur:180,per:25,order:'PCM',fo:'PCM',...Store.get('nta_cfg',{})};
 setOrder(cfg.order);let S=null,timerId=null,pdfUrl=null,pdfZoom=100,pdfName='Uploaded Paper';
 
-/* ---------- CBT reload guard (frontend only) ---------- */
-const RELOAD_GUARD_KEY='mdcccvii_cbt_reload_guard';
-function navWasReload(){try{const n=performance.getEntriesByType('navigation')[0];return n?.type==='reload'||(!n&&performance.navigation?.type===1)}catch(e){return false}}
-function getReloadGuard(){return Store.get(RELOAD_GUARD_KEY,{attemptId:null,count:0,autoSubmit:false})||{attemptId:null,count:0,autoSubmit:false}}
-function setReloadGuard(attemptId,count,autoSubmit=false){Store.set(RELOAD_GUARD_KEY,{attemptId:String(attemptId),count:Number(count)||0,autoSubmit:!!autoSubmit})}
-function clearReloadGuard(){try{localStorage.removeItem(RELOAD_GUARD_KEY)}catch(e){}delete MEM[RELOAD_GUARD_KEY]}
-function noteCbtReload(){
- const ss=Store.get('nta_sess');
- if(!ss||ss.done||!ss.backendAttemptId||!navWasReload())return;
- const g=getReloadGuard();
- const id=String(ss.backendAttemptId);
- const count=g.attemptId===id?Number(g.count)||0:0;
- const next=count+1;
- /* First 3 reloads are allowed. The 4th triggers automatic submission. */
- setReloadGuard(id,next,next>3);
-}
-noteCbtReload();
-
 /* ---------- Helpers ---------- */
 const N=()=>cfg.per*SUB.length,sub=i=>Math.floor(i/cfg.per),isNum=i=>i%cfg.per>=cfg.per-5;
 const saveSess=()=>{if(!S)return;if(!S.done)S.rem=Math.round((S.endAt-Date.now())/1000);Store.set('nta_sess',S)};
@@ -156,17 +138,29 @@ function start(){
   per:cfg.per,order:cfg.order,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:N()},()=>({a:'',s:0,t:0}))};
  S.q[0].s=1;begin();
 }
-async function resume(){
+function resume(){
  S=Store.get('nta_sess');if(!S)return;
  cfg.per=S.per;cfg.pos=Number(S.positiveMarks??cfg.pos);cfg.negA=Number(S.negativeMcq??cfg.negA);cfg.negB=Number(S.negativeNumerical??cfg.negB);setOrder(S.order||'PCM');
  if(S.done)return showRes();
- S.endAt=Date.now()+S.rem*1000;
- const guard=getReloadGuard();
- const forced=!!(S.backendAttemptId&&guard.attemptId===String(S.backendAttemptId)&&guard.autoSubmit);
- if(S.backendTestId && typeof window.resumeBackendTest==='function'){
-   try{await window.resumeBackendTest(S);if(forced){setTimeout(()=>{if(S&&!S.done&&typeof window.finish==='function')window.finish()},350)}}
-   catch(e){console.warn('Resume failed:',e)}
- }else begin();
+ // Browser reload protection: three reloads maximum for one active attempt.
+ // This is intentionally client-side only; the existing server remains authoritative.
+ try{
+   const nav=performance.getEntriesByType?.('navigation')?.[0];
+   const isReload=nav?.type==='reload';
+   if(isReload){
+     const key='mdcccvii_reload_'+(S.backendAttemptId||S.id);
+     const count=Math.min(3,Number(sessionStorage.getItem(key)||0)+1);
+     sessionStorage.setItem(key,String(count));
+     S.reloadCount=count;saveSess();
+     if(count>=3){
+       setTimeout(()=>{if(S&&!S.done){alert('Reload limit reached. Your test will be submitted automatically.');finish()}},250);
+       return;
+     }
+   }
+ }catch(e){}
+ S.endAt=Date.now()+Math.max(0,Number(S.rem||0))*1000;
+ if(S.backendTestId && typeof window.resumeBackendTest==='function') window.resumeBackendTest(S);
+ else begin();
 }
 function begin(){
  $('#land').hidden=true;$('#res').hidden=true;$('#app').hidden=false;
@@ -176,7 +170,8 @@ function begin(){
 }
 function tick(){
  if(!S||S.done)return;
- const rem=Math.max(0,Math.round((S.endAt-Date.now())/1000)),t=$('#timer');
+ const deadline=S.serverExpiresAt?new Date(S.serverExpiresAt).getTime():S.endAt;
+ const rem=Math.max(0,Math.round((deadline-Date.now())/1000)),t=$('#timer');
  if(t){t.textContent=fmt(rem);t.className=rem<300?'rd':rem<1800?'or':'';}
  S.rem=rem;
  if(S.q[S.cur])S.q[S.cur].t++;
@@ -255,7 +250,7 @@ function confirmSubmit(){
  <button class="btn r" onclick="finish()">Yes, Submit</button> <button class="btn w" onclick="closeM()">Cancel</button>`);
 }
 function finish(){
- clearInterval(timerId);closeM();S.done=true;S.rem=0;clearReloadGuard();saveSess();saveHist();showRes();
+ clearInterval(timerId);closeM();S.done=true;S.rem=0;saveSess();saveHist();showRes();
 }
 
 /* ---------- Evaluation Engine ---------- */
@@ -438,11 +433,7 @@ function home(){
  if(profileChipEl){const u=window.mock1807Auth?.user,m=u?.user_metadata||{},nm=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'';const ph=m.avatar_url||m.picture||p.photo||'';const ini=esc(String(nm).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M');profileChipEl.innerHTML=nm?`<span class="profile-chip">${ph?`<img src="${esc(ph)}" alt="">`:`<span class="profile-fallback">${ini}</span>`}</span>`:'';}
  if(pb)pb.innerHTML=p.name?`<div class="profile-mini">${p.photo?`<img src="${p.photo}" alt="">`:'<span class="avatar-fallback">N</span>'}<div><b>${esc(p.name)}</b><span>Candidate profile saved · reused automatically in every test</span></div><button class="gbtn" onclick="profileSetup()">Edit</button></div>`:`<div class="profile-mini"><span class="avatar-fallback">?</span><div><b>Set up your candidate profile</b><span>Your name is asked once and reused for every test.</span></div><button class="pbtn" onclick="profileSetup()">Set up</button></div>`;
  const ss=Store.get('nta_sess'),rb=$('#resumeBox');rb.hidden=!(ss&&!ss.done);
- if(!rb.hidden){
-  const rg=getReloadGuard(),forced=!!(ss.backendAttemptId&&rg.attemptId===String(ss.backendAttemptId)&&rg.autoSubmit);
-  rb.innerHTML=forced?`<span>⚠ <b>Reload limit reached.</b> Your test is being submitted automatically…</span>`:`<span>⏱ <b>Test in progress:</b> ${esc(ss.type||'Test')} – ${esc(ss.name)}</span><button class="pbtn" onclick="resume()">Resume</button><button class="gbtn" onclick="localStorage.removeItem('nta_sess');home()">Discard</button>`;
-  if(forced)setTimeout(()=>{if(typeof resume==='function')resume()},450);
- }
+ if(!rb.hidden)rb.innerHTML=`<span>⏱ <b>Test in progress:</b> ${esc(ss.type||'Test')} – ${esc(ss.name)}</span><button class="pbtn" onclick="resume()">Resume</button><button class="gbtn" onclick="localStorage.removeItem('nta_sess');home()">Discard</button>`;
  const h=Store.get('nta_hist',[]),pc=x=>Math.max(0,Math.round(x.score/x.max*100)),SJ={};
  h.forEach(x=>x.subs.forEach(u=>{const a=SJ[u.n]=SJ[u.n]||{c:0,w:0};a.c+=u.c;a.w+=u.w}));
  const tot=Object.values(SJ).reduce((a,u)=>({c:a.c+u.c,w:a.w+u.w}),{c:0,w:0}),acc=tot.c+tot.w?Math.round(tot.c/(tot.c+tot.w)*100):0;

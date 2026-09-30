@@ -5,7 +5,7 @@
   const SUPABASE_KEY='sb_publishable_aiJYxr3AYoeZHBXwIoXaaQ_gIfHxV2s';
   const BUCKET='test-pdfs';
   const $=s=>document.querySelector(s);
-  let sb=null, tests=[], doneMap={}, attemptState={}, activeAttemptId=null, finishing=false, syncTimer=null;
+  let sb=null, tests=[], doneMap={}, grantMap={}, activeAttemptId=null, finishing=false, syncTimer=null, serverResults={};
 
   function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function parts(ms){ms=Math.max(0,ms);return {d:Math.floor(ms/86400000),h:Math.floor(ms%86400000/3600000),m:Math.floor(ms%3600000/60000),s:Math.floor(ms%60000/1000)}}
@@ -26,29 +26,17 @@
   function tiles(ms){const p=parts(ms);return [['d',p.d,'Days'],['h',p.h,'Hrs'],['m',p.m,'Min'],['s',p.s,'Sec']].map(([k,v,l])=>`<div><b data-u="${k}">${String(v).padStart(2,'0')}</b><small>${l}</small></div>`).join('')}
   function calLink(t){const s=new Date(t.release_at),e=new Date(s.getTime()+(Number(t.duration_minutes)||180)*60000),f=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.name)+'&dates='+f(s)+'/'+f(e)+'&details='+encodeURIComponent('MDCCCVII Tests - starts at the scheduled time.')}
   function localDone(t){try{return (JSON.parse(localStorage.getItem('nta_hist')||'[]')||[]).filter(x=>x&&x.s&&Number(x.s.backendTestId)===Number(t.id))}catch(e){return[]}}
-  function stateFor(t){
-    const s=attemptState[t.id]||{};
-    const loc=localDone(t);
-    const used=Math.max(Number(s.attempts_used||0),doneMap[t.id]||0,loc.length);
-    const base=1+Number(t.reattempt_limit||0);
-    const granted=Math.max(0,Number(s.granted_remaining||0));
-    const left=Math.max(0,base-used)+granted;
-    return {used,base,granted,left,latestId:s.latest_attempt_id||null,score:s.latest_score};
-  }
   function actions(t,r){
-    const st=stateFor(t);
-    if(!r)return `<button class="bt-btn" disabled>Locked until start time</button>`;
-    if(!st.used && !st.granted)return `<button class="bt-btn" data-backend-test="${esc2(t.id)}">Start test</button>`;
-    const resultLabel=st.score!==null && st.score!==undefined ? 'Analysis / Result' : 'Result / Analysis';
-    const attemptLabel=st.left>0 ? (st.granted>0 ? `Re-attempt · ${st.left} left` : 'Re-attempt') : 'No attempts left';
-    return `<div class="bt-dual"><button class="bt-btn" data-bt-analysis="${esc2(t.id)}">${resultLabel}</button><button class="bt-btn alt" ${st.left?'':'disabled'} data-backend-test="${esc2(t.id)}">${attemptLabel}</button></div>`;
-  }
+    const loc=localDone(t),used=doneMap[t.id]||0,lim=1+Number(t.reattempt_limit||0),grant=Number(grantMap[t.id]||0),left=Math.max(0,lim-used)+grant;
+    if(!r||!used)return `<button class="bt-btn" ${r?'':'disabled'} data-backend-test="${esc2(t.id)}">${r?'Start test':'Locked until start time'}</button>`;
+    const label=left>0?'Re-attempt':'No attempts left';
+    return `<div class="bt-dual"><button class="bt-btn" data-bt-result-test="${esc2(t.id)}">Analysis / Result</button><button class="bt-btn alt" ${left?'':'disabled'} data-backend-test="${esc2(t.id)}">${label}</button></div><small class="bt-attempt-note">${grant>0?`${grant} admin-granted attempt${grant===1?'':'s'} available · `:''}Availability is verified by the server when you start.</small>`}
   function card(t){
     const r=released(t),q=Number(t.total_questions)||0,m=Number(t.total_marks)||0,d=Number(t.duration_minutes)||180,ra=Number(t.reattempt_limit||0);
     return `<article class="bt-card ${r?'is-live':''}">
       <div class="bt-top"><span class="bt-pill ${r?'live':''}">${r?'Live now':'Upcoming'}</span><span class="bt-date">${tz(t.release_at)}</span></div>
       <h3>${esc2(t.name)}</h3>${t.description?`<p class="bt-desc">${esc2(t.description)}</p>`:''}
-      <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div><div><small>Attempts left</small><b>${Math.max(0,stateFor(t).left)}</b></div></div>
+      <div class="bt-meta"><div><small>Duration</small><b>${d} min</b></div><div><small>Questions</small><b>${q}</b></div><div><small>Marks</small><b>${m}</b></div><div><small>Attempts</small><b>${ra===0?'1':ra+1}</b></div></div>
       ${r?'':`<div class="cd" data-cd="${esc2(t.id)}"><span>Opens in</span><div class="cd-t">${tiles(new Date(t.release_at)-Date.now())}</div></div>`}
       ${actions(t,r)}
       ${r?'':`<a class="bt-cal" href="${calLink(t)}" target="_blank" rel="noopener">+ Add to calendar</a>`}
@@ -62,7 +50,8 @@
     const feat=nx?`<article class="nt"><div><span class="bt-pill">Next up</span><h3>${esc2(nx.name)}</h3><p>${tz(nx.release_at)} · ${Number(nx.duration_minutes)||180} min · ${Number(nx.total_questions)||0} questions · ${Number(nx.total_marks)||0} marks</p><a class="bt-cal" href="${calLink(nx)}" target="_blank" rel="noopener">+ Add to calendar</a></div><div class="cd" data-cd="${esc2(nx.id)}"><span>Opens in</span><div class="cd-t big">${tiles(new Date(nx.release_at)-Date.now())}</div></div></article>`:'';
     box.innerHTML=feat+live.map(card).join('')+up.slice(1).map(card).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
-    box.querySelectorAll('[data-bt-analysis]').forEach(b=>b.addEventListener('click',()=>openBackendAnalysis(Number(b.dataset.btAnalysis))));
+    box.querySelectorAll('[data-bt-result-test]').forEach(b=>b.addEventListener('click',()=>openServerResult(Number(b.dataset.btResultTest))));
+    box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.btResult&&typeof openH==='function')openH(Number(b.dataset.btResult))}));
   }
   function tick(){
     const box=container();if(!box)return;let flip=false;
@@ -77,18 +66,45 @@
     const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];
-    doneMap={};attemptState={};
     try{
-      const {data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',sessionData.session.user.id).in('status',['submitted','in_progress']);
-      (at||[]).forEach(a=>{if(a.status==='submitted')doneMap[a.test_id]=(doneMap[a.test_id]||0)+1});
+      const uid=sessionData.session.user.id;
+      const {data:at}=await sb.from('attempts').select('id,test_id,status,score,max_score,correct_count,incorrect_count,unanswered_count,time_taken_seconds,submitted_at').eq('user_id',uid).eq('status','submitted');
+      doneMap={};serverResults={};(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1;const old=serverResults[a.test_id];if(!old||Number(a.score??-Infinity)>Number(old.score??-Infinity))serverResults[a.test_id]=a});
     }catch(e){console.warn('Attempt counts unavailable',e.message)}
+    grantMap={};
     try{
-      const {data:st,error:ste}=await sb.rpc('get_my_attempt_status');
-      if(ste)throw ste;
-      (st||[]).forEach(x=>attemptState[x.test_id]=x);
-    }catch(e){console.warn('Attempt/grant status unavailable:',e.message)}
+      const uid=sessionData.session.user.id;
+      const {data:gr}=await sb.from('attempt_grants').select('test_id,remaining').eq('user_id',uid);
+      (gr||[]).forEach(g=>grantMap[g.test_id]=(grantMap[g.test_id]||0)+Number(g.remaining||0));
+    }catch(e){/* RLS may intentionally hide grant rows; the start RPC remains authoritative. */}
     render();
   }
+  async function openServerResult(testId){
+    try{
+      const t=tests.find(x=>Number(x.id)===Number(testId));
+      const {data:sessionNow,error:sessionError}=await sb.auth.getSession();
+      if(sessionError)throw sessionError;
+      const uid=sessionNow?.session?.user?.id;
+      if(!uid)throw new Error('Please sign in again to open your result.');
+      let attempt=serverResults[testId];
+      if(!attempt){
+        const r=await sb.from('attempts').select('id,test_id,score,max_score,correct_count,incorrect_count,unanswered_count,time_taken_seconds,submitted_at').eq('user_id',uid).eq('test_id',testId).eq('status','submitted').order('score',{ascending:false}).limit(1).maybeSingle();
+        if(r.error)throw r.error;attempt=r.data;
+      }
+      if(!attempt)throw new Error('No submitted result was found for this test.');
+      const ar=await sb.from('answers').select('question_no,response,marked_for_review,answered_at').eq('attempt_id',attempt.id).order('question_no',{ascending:true});
+      const total=Number(t?.total_questions||0)||((ar.data||[]).length||75);
+      const per=Math.floor(total/3)||25;
+      cfg.per=per;cfg.dur=Number(t?.duration_minutes||180);cfg.pos=Number(t?.positive_marks??4);cfg.negA=Number(t?.negative_mcq??1);cfg.negB=Number(t?.negative_numerical??1);setOrder('PCM');
+      let key=[];try{const kr=await sb.rpc('get_answer_key',{p_test_id:testId});if(!kr.error&&Array.isArray(kr.data))key=kr.data.map(x=>String(x??''));}catch(e){}
+      const qs=Array.from({length:total},()=>({a:'',s:1,t:0}));
+      (ar.data||[]).forEach(x=>{const i=Number(x.question_no)-1;if(qs[i]){qs[i].a=String(x.response??'');qs[i].s=x.marked_for_review?(qs[i].a?4:3):(qs[i].a?2:1);}});
+      S={id:Date.now(),type:t?.name||'Test',name:getProfile()?.name||'Student',photo:getProfile()?.photo||'',roll:'',cur:0,done:true,mode:'A',key,man:[],date:attempt.submitted_at?new Date(attempt.submitted_at).toLocaleString():new Date().toLocaleString(),per,order:'PCM',backendTestId:testId,backendAttemptId:attempt.id,maxMarks:Number(attempt.max_score||t?.total_marks||total*cfg.pos),positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,q:qs,serverScore:Number(attempt.score??0),serverCorrect:Number(attempt.correct_count??0),serverIncorrect:Number(attempt.incorrect_count??0),serverUnanswered:Number(attempt.unanswered_count??0),serverTime:Number(attempt.time_taken_seconds??0)};
+      if(typeof showRes==='function')showRes(); else if(typeof openH==='function'){const h=localDone(t);h.length?openH(h[0].id):alert('Result screen is not available yet.');}
+    }catch(e){console.error('Result load failed',e);alert(e.message||'Could not load your result.');}
+  }
+  window.openServerResult=openServerResult;
+
   async function launch(id){
     const t=tests.find(x=>Number(x.id)===Number(id));if(!t)return;
     if(!released(t)){render();return alert(`This test opens at ${fmtDate(t.release_at)}.`)}
@@ -124,10 +140,6 @@
       activeAttemptId=row.id;S.backendAttemptId=row.id;S.backendTestId=Number(t.id);
       S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;
       S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
-      const serverDeadline=Date.parse(row.expires_at||'');
-      if(Number.isFinite(serverDeadline))S.endAt=serverDeadline;
-      S.rem=Math.max(0,Math.ceil((S.endAt-Date.now())/1000));
-      if(typeof setReloadGuard==='function')setReloadGuard(row.id,0,false);
       // The server snapshot is authoritative for this attempt.
       cfg.dur=S.serverDurationMinutes;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);
       if(row.total_questions && Number(row.total_questions)!==N()) throw new Error('This test changed after loading. Refresh and try again.');
@@ -182,12 +194,7 @@
     window.finish=async function(){if(finishing)return;finishing=true;try{const ok=await finalizeAttempt();if(ok)original()}finally{finishing=false}};
     window.__backendFinishPatched=true;
   }
-  function startClock(){
-    render();
-    window.__backendClock&&clearInterval(window.__backendClock);
-    window.__backendClock=setInterval(()=>{if(typeof tick==='function')tick()},1000);
-    document.addEventListener('visibilitychange',()=>{if(typeof tick==='function')tick()});
-  }
+  function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(!document.hidden)tick()},1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
   async function resumeBackendTest(saved){
     try{
       if(!saved.backendAttemptId)throw new Error('No active server attempt was found.');
@@ -202,47 +209,12 @@
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
       cfg.per=(Number(row.total_questions)||75)/3;cfg.dur=Number(row.duration_minutes)||180;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);setOrder('PCM');
       S.backendAttemptId=row.id;S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
-      const serverDeadline=Date.parse(row.expires_at||'');
-      if(Number.isFinite(serverDeadline))S.endAt=serverDeadline;
-      S.rem=Math.max(0,Math.ceil((S.endAt-Date.now())/1000));
       S.q=Array.from({length:cfg.per*SUB.length},(_,i)=>({a:'',s:0,t:0}));
       (row.answers||[]).forEach(a=>{const i=Number(a.question_no)-1;if(S.q[i]){S.q[i].a=a.response||'';S.q[i].s=a.marked_for_review?(a.response?4:3):(a.response?2:1);}});
       S.cur=Math.min(Number(saved.cur)||0,S.q.length-1);S.q[S.cur].s=S.q[S.cur].s||1;
       begin();startAttemptAutosave();
     }catch(e){alert(e.message||'Could not reopen the saved test.');}
   }
-  async function openBackendAnalysis(testId){
-    try{
-      const {data,error}=await sb.rpc('get_my_test_analysis',{p_test_id:Number(testId)});
-      if(error)throw error;
-      const rows=data||[];
-      if(!rows.length){
-        const st=attemptState[testId];
-        if(st && st.latest_score!==null && st.latest_score!==undefined){
-          alert('Your result is recorded, but the detailed analysis is not available yet. The answer key may still be pending.');
-        }else{
-          alert('Your result is not available yet. Please wait for the answer key to be published.');
-        }
-        return;
-      }
-      const meta=rows[0];
-      const total=Number(meta.total_questions)||rows.length;
-      const t=tests.find(x=>Number(x.id)===Number(testId));
-      cfg.per=Math.max(1,Math.floor(total/3));
-      cfg.dur=Number(meta.duration_minutes)||Number(t?.duration_minutes)||180;
-      cfg.pos=Number(meta.positive_marks??t?.positive_marks??4);
-      cfg.negA=Number(meta.negative_mcq??t?.negative_mcq??1);
-      cfg.negB=Number(meta.negative_numerical??t?.negative_numerical??1);
-      setOrder('PCM');
-      const p=getProfile();
-      S={id:Date.now(),type:t?.name||meta.test_name||'Test',name:p.name||'Student',photo:p.photo||'',roll:'',cur:0,done:true,mode:'A',man:[],date:meta.submitted_at?new Date(meta.submitted_at).toLocaleString():new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:Number(testId),backendAttemptId:meta.attempt_id,maxMarks:Number(meta.max_score)||Number(t?.total_marks)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,endAt:meta.expires_at?Date.parse(meta.expires_at):Date.now(),q:Array.from({length:total},()=>({a:'',s:1,t:0}))};
-      S.key=Array.from({length:total},()=>'' );
-      rows.forEach(r=>{const i=Number(r.question_no)-1;if(i<0||i>=total)return;S.q[i].a=r.response==null?'':String(r.response);S.q[i].s=S.q[i].a!==''?2:1;S.key[i]=r.correct_response==null?'':String(r.correct_response)});
-      showRes();
-      if(typeof dash==='function')dash();
-    }catch(e){console.error('Student analysis failed:',e);alert('Could not load your analysis right now. Please refresh and try again.')}
-  }
-  window.openBackendAnalysis=openBackendAnalysis;
   window.resumeBackendTest=resumeBackendTest;
   function init(){
     style();

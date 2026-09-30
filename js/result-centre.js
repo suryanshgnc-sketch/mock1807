@@ -1,11 +1,11 @@
 /* Result Centre: neon results page. Checking unlocks only when the admin has published the answer key. */
 (function(){
 'use strict';
-var RC={sid:null,st:'loading',view:'home',filter:'all',sec:0,correction:false};
+var RC={sid:null,st:'loading',view:'home',filter:'all',sec:0};
 var COL=['#5eead4','#a78bfa','#fbbf24'];
 var q=function(s){return document.querySelector(s)};
 var L=function(i){return 'ABCD'[+i-1]};
-function disp(i,v){v=String(v==null?'':v).trim();if(v==='')return '\u2014';if(isNum(i))return v;return v.split('+').map(function(x){return L(x)||x}).join(' + ')}
+function disp(i,v){v=String(v==null?'':v).trim();if(v==='')return '\u2014';return isNum(i)?v:(L(v)||v)}
 function fmtT(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s'}
 /* ---- neutralise every manual-check entry point ---- */
 ['manualSet','manualAll','showKeyPdf','keyPdf','pasteKey','clearKey'].forEach(function(n){window[n]=function(){}});
@@ -20,18 +20,14 @@ var ILL={
 function bg(){return '<div class="rc-bg"><i></i><i></i><i></i><span></span></div>'}
 function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="goHome()">\u2190 Home</button><div class="rc-id"><small>RESULT CENTRE</small><h1>'+esc(S.name||'Student')+'</h1></div><div class="rc-meta"><b>'+esc(S.type||'Test')+'</b><span>'+esc(S.date||'')+'</span></div>'+(sub||'')+'</header>'}
 /* ---- key fetch ---- */
-async function refreshCorrectionAvailability(){
- var c=window.mock1807Auth&&window.mock1807Auth.client;RC.correction=false;if(!c||!S.backendTestId)return;
- try{var r=await c.storage.from('test-pdfs').createSignedUrl('tests/'+S.backendTestId+'/key-corrections.pdf',300);RC.correction=!!(r.data&&r.data.signedUrl&&!r.error)}catch(e){RC.correction=false}
-}
 async function fetchKey(){
- if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';await refreshCorrectionAvailability();return}
+ if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';return}
  var c=window.mock1807Auth&&window.mock1807Auth.client;
  if(!c||!S.backendTestId){RC.st='locked';RC.why='practice';return}
  try{
   var r=await c.rpc('get_answer_key',{p_test_id:S.backendTestId});
   if(r.error)throw r.error;
-  if(Array.isArray(r.data)&&r.data.length===N()){S.key=r.data.map(function(x){return String(x).trim()});S.keyFromServer=true;RC.st='ready';await refreshCorrectionAvailability()}
+  if(Array.isArray(r.data)&&r.data.length===N()){S.key=r.data.map(function(x){return String(x).trim()});S.keyFromServer=true;RC.st='ready'}
   else{RC.st='locked';RC.why='pending'}
  }catch(e){RC.st='locked';RC.why='pending';RC.err=e&&e.message}
 }
@@ -54,14 +50,7 @@ window.RCsolutions=async function(){
   if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
  catch(e){if(w)w.close();alert('The key / solutions PDF is not available for this test yet.')}
 };
-window.RCcorrections=async function(){
- var c=window.mock1807Auth&&window.mock1807Auth.client;if(!c||!S.backendTestId)return;
- var w=window.open('','_blank');
- try{var r=await c.storage.from('test-pdfs').createSignedUrl('tests/'+S.backendTestId+'/key-corrections.pdf',3600);
-  if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
- catch(e){if(w)w.close();alert('No key-corrections PDF has been published for this test yet.')}
-};
-function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions PDF</button>' +(RC.correction?'<button class="rc-btn correction" onclick="RCcorrections()">Key corrections PDF</button>':''):'')}
+function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions (PDF)</button>':'')}
 /* ---- views ---- */
 function vLoading(){return '<div class="rc-center">'+ILL.lock+'<h2>Checking the vault\u2026</h2><div class="rc-scan"><i></i></div></div>'}
 function vLocked(){
@@ -80,19 +69,16 @@ function vKey(){
  return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></span></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
 }
 function vResult(){
- var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0;
+ var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0; if(S.serverScore!==undefined){sm.score=Number(S.serverScore);c=Number(S.serverCorrect||0);w=Number(S.serverIncorrect||0);u=Number(S.serverUnanswered||0);sm.acc=c+w?Math.round(c/(c+w)*100):0;t=Number(S.serverTime||0);}
  sm.subs.forEach(function(x){c+=x.c;w+=x.w;u+=x.u;t+=x.t});
  var pct=max>0?Math.max(0,sm.score)/max:0,CIRC=2*Math.PI*54,tot=c+w+u||1;
- var attempted=c+w,avg=tot?Math.round(t/tot):0,neg=Math.round(-E.reduce(function(a,e){return a+Math.min(0,Number(e.m)||0)},0)*100)/100;
- var subjectNeed=sm.subs.slice().sort(function(a,b){return a.acc-b.acc})[0];
- var insight='<div class="rc-insights"><div><small>ATTEMPT RATE</small><b>'+(tot?Math.round(attempted/tot*100):0)+'%</b><span>'+attempted+' of '+tot+' attempted</span></div><div><small>AVG TIME</small><b>'+fmtT(avg)+'</b><span>per question</span></div><div><small>NEGATIVE IMPACT</small><b>−'+neg+'</b><span>estimated from wrong MCQs</span></div><div><small>FOCUS NEXT</small><b>'+esc(subjectNeed?subjectNeed.n:'—')+'</b><span>'+(subjectNeed?subjectNeed.acc+'% accuracy':'Not enough data')+'</span></div></div>';
  var subs=sm.subs.map(function(x,k){var mx=cfg.per*cfg.pos,p=Math.max(0,x.m)/mx*100;return '<div class="rc-sub" style="--a:'+COL[k%3]+'"><div class="rc-sub-h"><b>'+esc(x.n)+'</b><span data-count="'+x.m+'">0</span></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' \u2713</span><span class="r">'+x.w+' \u2717</span><span>'+x.u+' \u2014</span><span>'+x.acc+'% acc</span><span>'+mm(x.t)+'</span></div></div>'}).join('');
  var pal=SUB.map(function(n,k){var s='';for(var i=k*cfg.per;i<(k+1)*cfg.per;i++){var r=E[i].r;s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*18)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>'}return '<div class="rc-pal-sec"><small style="color:'+COL[k%3]+'">'+esc(n)+'</small><div class="rc-pal">'+s+'</div></div>'}).join('');
  var seg=function(v,cl){return '<i class="'+cl+'" style="--w:'+(v/tot*100)+'%"></i>'};
- return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions PDF</button>' +(RC.correction?'<button class="rc-btn correction" onclick="RCcorrections()">Corrections PDF</button>':''):'')+'<button class="rc-btn" onclick="downloadReport()">Response sheet</button></span></div>'+
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn" onclick="downloadReport()">Download response sheet</button></span></div>'+
  '<div class="rc-hero"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pct))+'" transform="rotate(-90 65 65)">'+'</circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div>'+
  '<div class="rc-stats"><div class="s ok"><b data-count="'+c+'">0</b><span>Correct</span></div><div class="s bad"><b data-count="'+w+'">0</b><span>Incorrect</span></div><div class="s na"><b data-count="'+u+'">0</b><span>Unattempted</span></div><div class="s"><b data-count="'+sm.acc+'" data-suf="%">0</b><span>Accuracy</span></div><div class="s wide"><b>'+fmtT(t)+'</b><span>Time on questions</span></div></div></div>'+
- insight+'<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
+ '<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
  '<div class="rc-subs">'+subs+'</div>'+
  '<h3 class="rc-h3">Question palette</h3><div class="rc-legend"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div>'+pal+
  '<h3 class="rc-h3">Question-by-question report</h3><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div><div id="rcList" class="rc-list">'+rows(sm)+'</div>'
