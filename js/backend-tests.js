@@ -102,6 +102,10 @@
       activeAttemptId=row.id;S.backendAttemptId=row.id;S.backendTestId=Number(t.id);
       S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;
       S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
+      const serverDeadline=Date.parse(row.expires_at||'');
+      if(Number.isFinite(serverDeadline))S.endAt=serverDeadline;
+      S.rem=Math.max(0,Math.ceil((S.endAt-Date.now())/1000));
+      if(typeof setReloadGuard==='function')setReloadGuard(row.id,0,false);
       // The server snapshot is authoritative for this attempt.
       cfg.dur=S.serverDurationMinutes;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);
       if(row.total_questions && Number(row.total_questions)!==N()) throw new Error('This test changed after loading. Refresh and try again.');
@@ -156,7 +160,12 @@
     window.finish=async function(){if(finishing)return;finishing=true;try{const ok=await finalizeAttempt();if(ok)original()}finally{finishing=false}};
     window.__backendFinishPatched=true;
   }
-  function startClock(){render();window.__backendClock&&clearInterval(window.__backendClock);window.__backendClock=setInterval(()=>{if(!document.hidden)tick()},1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()})}
+  function startClock(){
+    render();
+    window.__backendClock&&clearInterval(window.__backendClock);
+    window.__backendClock=setInterval(()=>{if(typeof tick==='function')tick()},1000);
+    document.addEventListener('visibilitychange',()=>{if(typeof tick==='function')tick()});
+  }
   async function resumeBackendTest(saved){
     try{
       if(!saved.backendAttemptId)throw new Error('No active server attempt was found.');
@@ -171,6 +180,9 @@
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
       cfg.per=(Number(row.total_questions)||75)/3;cfg.dur=Number(row.duration_minutes)||180;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);setOrder('PCM');
       S.backendAttemptId=row.id;S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
+      const serverDeadline=Date.parse(row.expires_at||'');
+      if(Number.isFinite(serverDeadline))S.endAt=serverDeadline;
+      S.rem=Math.max(0,Math.ceil((S.endAt-Date.now())/1000));
       S.q=Array.from({length:cfg.per*SUB.length},(_,i)=>({a:'',s:0,t:0}));
       (row.answers||[]).forEach(a=>{const i=Number(a.question_no)-1;if(S.q[i]){S.q[i].a=a.response||'';S.q[i].s=a.marked_for_review?(a.response?4:3):(a.response?2:1);}});
       S.cur=Math.min(Number(saved.cur)||0,S.q.length-1);S.q[S.cur].s=S.q[S.cur].s||1;
