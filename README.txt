@@ -1,15 +1,18 @@
-SAFE ROLLBACK — MDCCCVII
+MDCCCVII — STUDENT RESULTS + EXTRA ATTEMPTS FIX
 
-These are the exact backend-sensitive frontend files from the user's original mock1807-main(6).zip.
+This patch fixes two student-side issues:
 
-Replace:
-  js/backend-tests.js
-  js/app.js
-  admin/admin.js
-  admin/index.html
-  admin/admin.css
+1. STUDENTS can open their submitted test Analysis / Result from their account even when the result was saved on another device. The existing local full analysis is still used when available; otherwise the site fetches a secure post-submission analysis from Supabase without exposing the answer-key table before submission.
 
-DO NOT RUN ANY SQL FROM THE PREVIOUS PATCHES.
-This rollback ZIP intentionally contains NO SQL and does not alter the database.
+2. Extra attempts granted by Admin are reflected on the student's test card as Attempts left and Re-attempt. The existing start_test_attempt() function remains the authority that actually consumes the grant.
 
-The original mock1807-main(6).zip remains the clean baseline for the project.
+FILES:
+- js/backend-tests.js
+- sql/STUDENT-RESULTS-AND-ATTEMPTS.sql
+
+IMPORTANT:
+Run the SQL file ONCE in Supabase SQL Editor. It is additive: it creates only two student-read RPCs and does not replace start_test_attempt, submit_test_attempt, admin_grant_attempt, or scoring functions.
+
+Then replace js/backend-tests.js.
+
+Do not replace app.js, admin files, or any other backend files for this patch.
