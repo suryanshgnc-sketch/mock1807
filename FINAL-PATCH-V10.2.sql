@@ -243,6 +243,19 @@ end; $$;
 grant execute on function public.publish_answer_key(bigint,text) to authenticated;
 
 
+-- Students can read the official key ONLY after the admin has published it AND they have submitted this test.
+create or replace function public.get_answer_key(p_test_id bigint) returns text[]
+language plpgsql security definer stable set search_path=public as $$
+declare ks text[];
+begin
+  if auth.uid() is null then return null; end if;
+  if not exists (select 1 from public.attempts a where a.test_id=p_test_id and a.user_id=auth.uid() and a.status='submitted') then return null; end if;
+  select k.keys into ks from public.test_keys k where k.test_id=p_test_id;
+  return ks;
+end; $$;
+revoke all on function public.get_answer_key(bigint) from public,anon;
+grant execute on function public.get_answer_key(bigint) to authenticated;
+
 -- NOTE: guard triggers are SECURITY INVOKER on purpose: inside RPC (definer) functions current_user is the owner, so they are exempt.
 -- Students may not edit protected attempt columns or write answers directly (RPC functions run as owner and are exempt).
 create or replace function public.guard_attempt_update() returns trigger language plpgsql set search_path=public as $$
@@ -292,6 +305,6 @@ end; $$;
 -- Lock down function execution: no anonymous access.
 do $r$ declare x record; begin
   for x in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in
-   ('start_test_attempt','save_attempt_answers','get_attempt_resume','submit_test_attempt','get_leaderboard','get_my_results','publish_answer_key','admin_update_student','admin_grant_attempt','admin_force_submit','admin_invalidate_attempt','admin_archive_test','admin_test_stats','admin_audit')
+   ('start_test_attempt','save_attempt_answers','get_attempt_resume','submit_test_attempt','get_leaderboard','get_my_results','get_answer_key','publish_answer_key','admin_update_student','admin_grant_attempt','admin_force_submit','admin_invalidate_attempt','admin_archive_test','admin_test_stats','admin_audit')
   loop execute 'revoke all on function '||x.sig||' from public, anon'; execute 'grant execute on function '||x.sig||' to authenticated'; end loop;
 end $r$;

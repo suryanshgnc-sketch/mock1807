@@ -91,7 +91,7 @@
       if(error)throw error;
       const row=Array.isArray(data)?data[0]:data;
       if(!row?.id)throw new Error('The server did not create an attempt.');
-      activeAttemptId=row.id;S.backendAttemptId=row.id;
+      activeAttemptId=row.id;S.backendAttemptId=row.id;S.backendTestId=Number(t.id);
       S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;
       S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
       // The server snapshot is authoritative for this attempt.

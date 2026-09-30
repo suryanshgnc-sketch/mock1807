@@ -1,0 +1,99 @@
+/* Result Centre: neon results page. Checking unlocks only when the admin has published the answer key. */
+(function(){
+'use strict';
+var RC={sid:null,st:'loading',view:'home',filter:'all',sec:0};
+var COL=['#5eead4','#a78bfa','#fbbf24'];
+var q=function(s){return document.querySelector(s)};
+var L=function(i){return 'ABCD'[+i-1]};
+function disp(i,v){v=String(v==null?'':v).trim();if(v==='')return '\u2014';return isNum(i)?v:(L(v)||v)}
+function fmtT(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s'}
+/* ---- neutralise every manual-check entry point ---- */
+['manualSet','manualAll','showKeyPdf','keyPdf','pasteKey','clearKey'].forEach(function(n){window[n]=function(){}});
+/* ---- illustrations ---- */
+var DEFS='<defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ffa3"/><stop offset="1" stop-color="#86ff3f"/></linearGradient></defs>';
+var ILL={
+ lock:'<svg viewBox="0 0 220 200" class="rc-ill">'+DEFS+'<circle class="rc-ring r1" cx="110" cy="100" r="88" fill="none" stroke="#86ff3f44" stroke-dasharray="3 11"/><circle class="rc-ring r2" cx="110" cy="100" r="68" fill="none" stroke="#a78bfa55" stroke-dasharray="18 9"/><path class="rc-shackle" d="M78 94V76a32 32 0 0 1 64 0v18" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round"/><rect x="64" y="92" width="92" height="68" rx="15" fill="#0c130e" stroke="url(#rg)" stroke-width="3"/><circle cx="110" cy="123" r="8" fill="#86ff3f"/><rect x="107" y="127" width="6" height="17" rx="3" fill="#86ff3f"/></svg>',
+ shield:'<svg viewBox="0 0 220 200" class="rc-ill">'+DEFS+'<circle class="rc-ring r1" cx="110" cy="100" r="88" fill="none" stroke="#86ff3f44" stroke-dasharray="3 11"/><circle class="rc-ring r2" cx="110" cy="100" r="68" fill="none" stroke="#5eead455" stroke-dasharray="18 9"/><path d="M110 34l48 18v40c0 32-20 54-48 68-28-14-48-36-48-68V52z" fill="#0c130e" stroke="url(#rg)" stroke-width="3.5"/><path class="rc-tick" d="M88 100l16 16 30-34" fill="none" stroke="#86ff3f" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ key:'<svg viewBox="0 0 64 64" width="54" height="54" fill="none" stroke="#86ff3f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="32" r="12"/><path d="M34 32h24M50 32v9M42 32v7"/><circle cx="22" cy="32" r="4" fill="#86ff3f"/></svg>',
+ bolt:'<svg viewBox="0 0 64 64" width="54" height="54" fill="none" stroke="#86ff3f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M36 6L14 36h16l-4 22 24-32H34z" fill="#86ff3f22"/></svg>'
+};
+function bg(){return '<div class="rc-bg"><i></i><i></i><i></i><span></span></div>'}
+function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="home()">\u2190 Home</button><div><span class="rc-pill">RESULT CENTRE</span><h1>'+esc(S.name||'Student')+'</h1><p>'+esc(S.type||'Test')+' \u00B7 '+esc(S.date||'')+'</p></div>'+(sub||'')+'</header>'}
+/* ---- key fetch ---- */
+async function fetchKey(){
+ if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';return}
+ var c=window.mock1807Auth&&window.mock1807Auth.client;
+ if(!c||!S.backendTestId){RC.st='locked';RC.why='practice';return}
+ try{
+  var r=await c.rpc('get_answer_key',{p_test_id:S.backendTestId});
+  if(r.error)throw r.error;
+  if(Array.isArray(r.data)&&r.data.length===N()){S.key=r.data.map(function(x){return String(x).trim()});S.keyFromServer=true;RC.st='ready'}
+  else{RC.st='locked';RC.why='pending'}
+ }catch(e){RC.st='locked';RC.why='pending';RC.err=e&&e.message}
+}
+/* ---- views ---- */
+function vLoading(){return '<div class="rc-center">'+ILL.lock+'<h2>Checking the vault\u2026</h2><div class="rc-scan"><i></i></div></div>'}
+function vLocked(){
+ var p=RC.why==='practice';
+ return '<div class="rc-center">'+ILL.lock+'<span class="rc-tag lock">LOCKED</span><h2>'+(p?'Checking is for official tests':'Answer key not released yet')+'</h2><p>'+(p?'Practice sessions have no official key. Take an official mock test to unlock automatic checking.':'Your responses are saved. Checking and the answer key unlock automatically the moment the admin uploads the official key.')+'</p><div class="rc-actions">'+(p?'':'<button class="rc-btn solid" onclick="RCrefresh()">Check again</button>')+'<button class="rc-btn" onclick="home()">Back to home</button></div>'+(RC.err&&!p?'<small class="rc-err">'+esc(RC.err)+'</small>':'')+'</div>'
+}
+function vHome(){
+ return '<div class="rc-center">'+ILL.shield+'<span class="rc-tag ok"><i></i>ANSWER KEY PUBLISHED</span><h2>Your paper is ready to check</h2><p>The official key is loaded from the server. Choose how you want to continue.</p></div>'+
+ '<div class="rc-cards"><button class="rc-card" onclick="RCview(\'key\')"><div class="rc-cicon">'+ILL.key+'</div><b>View Answer Key</b><small>Browse the official key section by section, with your response beside it.</small><em>Open key \u2192</em></button>'+
+ '<button class="rc-card hot" onclick="RCcheck()"><div class="rc-cicon">'+ILL.bolt+'</div><b>Check Automatically</b><small>Instant score, subject analysis and a question-by-question report.</small><em>Evaluate now \u2192</em></button></div>'
+}
+function tabs(){return '<div class="rc-tabs">'+SUB.map(function(n,k){return '<button class="'+(RC.sec===k?'on':'')+'" style="--a:'+COL[k%3]+'" onclick="RCsec('+k+')">'+esc(n)+'</button>'}).join('')+'</div>'}
+function vKey(){
+ var per=cfg.per,a=RC.sec*per,h='';
+ for(var i=a;i<a+per;i++){var yr=S.q[i].a;h+='<div class="rc-chip'+(isNum(i)?' num':'')+'" style="--d:'+((i-a)*22)+'ms"><span>Q'+(i-a+1)+'</span><b>'+esc(disp(i,S.key[i]))+'</b><small>'+(yr===''?'not attempted':'you: '+esc(disp(i,yr)))+'</small></div>'}
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
+}
+function vResult(){
+ var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0;
+ sm.subs.forEach(function(x){c+=x.c;w+=x.w;u+=x.u;t+=x.t});
+ var pct=max>0?Math.max(0,sm.score)/max:0,CIRC=2*Math.PI*54,tot=c+w+u||1;
+ var subs=sm.subs.map(function(x,k){var mx=cfg.per*cfg.pos,p=Math.max(0,x.m)/mx*100;return '<div class="rc-sub" style="--a:'+COL[k%3]+'"><div class="rc-sub-h"><b>'+esc(x.n)+'</b><span data-count="'+x.m+'">0</span></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' \u2713</span><span class="r">'+x.w+' \u2717</span><span>'+x.u+' \u2014</span><span>'+x.acc+'% acc</span><span>'+mm(x.t)+'</span></div></div>'}).join('');
+ var pal=SUB.map(function(n,k){var s='';for(var i=k*cfg.per;i<(k+1)*cfg.per;i++){var r=E[i].r;s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*18)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>'}return '<div class="rc-pal-sec"><small style="color:'+COL[k%3]+'">'+esc(n)+'</small><div class="rc-pal">'+s+'</div></div>'}).join('');
+ var seg=function(v,cl){return '<i class="'+cl+'" style="--w:'+(v/tot*100)+'%"></i>'};
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><button class="rc-btn" onclick="downloadReport()">Download response sheet</button></div>'+
+ '<div class="rc-hero"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pct))+'" transform="rotate(-90 65 65)">'+'</circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div>'+
+ '<div class="rc-stats"><div class="s ok"><b data-count="'+c+'">0</b><span>Correct</span></div><div class="s bad"><b data-count="'+w+'">0</b><span>Incorrect</span></div><div class="s na"><b data-count="'+u+'">0</b><span>Unattempted</span></div><div class="s"><b data-count="'+sm.acc+'" data-suf="%">0</b><span>Accuracy</span></div><div class="s wide"><b>'+fmtT(t)+'</b><span>Time on questions</span></div></div></div>'+
+ '<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
+ '<div class="rc-subs">'+subs+'</div>'+
+ '<h3 class="rc-h3">Question palette</h3><div class="rc-legend"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div>'+pal+
+ '<h3 class="rc-h3">Question-by-question report</h3><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div><div id="rcList" class="rc-list">'+rows(sm)+'</div>'
+}
+function rows(sm){
+ var E=sm.E,h='',n=0;
+ for(var i=0;i<N();i++){var r=E[i].r;if(RC.filter!=='all'&&RC.filter!==r)continue;
+  var cl=r==='Correct'?'ok':r==='Incorrect'?'bad':'na',m=E[i].m;
+  h+='<div class="rc-row '+cl+'" id="rq-'+i+'" style="--d:'+Math.min(n++,14)*35+'ms"><span class="qn">'+String(i%cfg.per+1).padStart(2,'0')+'<small style="color:'+COL[sub(i)%3]+'">'+esc(String(SUB[sub(i)]).slice(0,4))+'</small></span><span class="ty">'+(isNum(i)?'NUM':'MCQ')+'</span><span class="a"><small>Your answer</small><b>'+esc(disp(i,S.q[i].a))+'</b></span><span class="a"><small>Correct</small><b>'+esc(disp(i,S.key[i]))+'</b></span><span class="mk">'+(m>0?'+'+m:m)+'</span><span class="tm">'+fmtT(S.q[i].t)+'</span></div>'}
+ return h||'<div class="rc-empty">Nothing in this filter.</div>'
+}
+/* ---- render ---- */
+function count(root){
+ root.querySelectorAll('[data-count]').forEach(function(el){
+  var to=+el.dataset.count,suf=el.dataset.suf||'',t0=performance.now();
+  (function f(t){var p=Math.min((t-t0)/1300,1);el.textContent=Math.round(to*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(f)})(t0)});
+ var arc=q('#rcArc');if(arc)requestAnimationFrame(function(){requestAnimationFrame(function(){arc.style.strokeDashoffset=arc.dataset.to})});
+ root.querySelectorAll('.rc-bar i,.rc-dist i').forEach(function(b){requestAnimationFrame(function(){b.classList.add('go')})});
+}
+function draw(){
+ var res=q('#res');if(!res)return;
+ if(RC.sid!==S.id){RC={sid:S.id,st:'loading',view:'home',filter:'all',sec:0};fetchKey().then(function(){draw()})}
+ var body=RC.st==='loading'?vLoading():RC.st==='locked'?vLocked():RC.view==='key'?vKey():RC.view==='result'?vResult():vHome();
+ res.innerHTML='<div class="rc">'+bg()+top()+'<main class="rc-main">'+body+'</main><div id="dash" hidden></div></div>';
+ res.scrollTop=0;window.scrollTo(0,0);count(res);
+}
+window.drawRes=draw;
+window.RCview=function(v){RC.view=v;draw()};
+window.RCsec=function(k){RC.sec=k;draw()};
+window.RCrefresh=function(){RC.st='loading';draw();fetchKey().then(draw)};
+window.RCfilter=function(f){RC.filter=f;var l=q('#rcList');document.querySelectorAll('.rc-filters button').forEach(function(b){b.classList.toggle('on',b.textContent.toLowerCase()===f.toLowerCase()||(f==='all'&&b.textContent==='All'))});if(l)l.innerHTML=rows(summary())};
+window.RCjump=function(i){RC.filter='all';var l=q('#rcList');if(l)l.innerHTML=rows(summary());document.querySelectorAll('.rc-filters button').forEach(function(b,k){b.classList.toggle('on',k===0)});var e=document.getElementById('rq-'+i);if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.classList.add('flash');setTimeout(function(){e.classList.remove('flash')},1400)}};
+window.RCcheck=function(){
+ if(RC.st!=='ready')return;S.mode='A';RC.view='result';RC.filter='all';draw();
+ try{dash()}catch(e){}
+ var d=q('#dash');if(d)d.hidden=true;
+};
+})();

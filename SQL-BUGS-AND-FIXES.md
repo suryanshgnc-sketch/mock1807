@@ -28,3 +28,8 @@ Existing V10 database: run only `FINAL-PATCH-V10.2.sql`. Then re-publish each an
 - Starting a test when you already have an in-progress attempt returns "attempt limit reached" (it does not silently resume, because that could overwrite saved answers from a fresh browser). Resume from the Resume box on the same device.
 - `RUN-ALL-SQL-V10.sql` on a database whose `attempts.id` is uuid prints an error at `get_attempt_resume`; ignore it, the final patch recreates it correctly.
 - Numerical questions are the last 5 of each third of the paper (paper split into 3 sections).
+
+## Added for Result Centre
+| # | Item | Detail |
+|---|------|--------|
+| 13 | Students had no safe way to read the key | `get_answer_key(test_id)`: returns the key only if it is published AND the caller has a submitted attempt of that test; null otherwise; anon denied. Tested on bigint and uuid databases. |

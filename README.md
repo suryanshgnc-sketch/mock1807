@@ -59,3 +59,8 @@ The server is now authoritative for exam time and submission state. The browser 
 3. Read `SQL-BUGS-AND-FIXES.md` (includes the RLS checks to do in your dashboard).
 4. Hard refresh after deploying (`Ctrl+Shift+R`).
 New UI: live hero console (cursor, typing, palette, live ranking), scroll trailer, tilt cards. CBT: keyboard shortcuts (A-D/1-4, S, M, R, X, arrows), timer alerts at 10/5/1 min, progress bar, offline notice.
+
+## Result Centre (checking page)
+- Manual checking, key paste and key-PDF upload are removed. Checking unlocks only when the admin has published the key and the student has submitted the test.
+- New RPC `get_answer_key(test_id)` is in `FINAL-PATCH-V10.2.sql` (run the patch again after updating). Students get the key only after submitting; before that it returns null.
+- Tests started before this update have no stored test id, so their results page shows the locked state. New attempts work normally.
