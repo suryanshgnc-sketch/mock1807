@@ -68,58 +68,43 @@ function vKey(){
  for(var i=a;i<a+per;i++){var yr=S.q[i].a;h+='<div class="rc-chip'+(isNum(i)?' num':'')+'" style="--d:'+((i-a)*22)+'ms"><span>Q'+(i-a+1)+'</span><b>'+esc(disp(i,S.key[i]))+'</b><small>'+(yr===''?'not attempted':'you: '+esc(disp(i,yr)))+'</small></div>'}
  return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></span></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
 }
+function pct0(v){return Math.max(0,Math.min(100,Math.round(Number(v)||0)))}
+function perfLabel(v){v=Number(v)||0;return v>=85?'EXCELLENT':v>=70?'STRONG':v>=50?'STABLE':'NEEDS FOCUS'}
+function insightLine(sm,c,w,u,t){
+ var attempts=c+w,acc=attempts?Math.round(c/attempts*100):0,attempt=pct0((attempts/(c+w+u||1))*100),avg=attempts?t/attempts:0;
+ var best=sm.subs.slice().sort(function(a,b){return (b.acc||0)-(a.acc||0)})[0],weak=sm.subs.slice().sort(function(a,b){return (a.acc||0)-(b.acc||0)})[0];
+ var parts=[];
+ if(acc>=85)parts.push('Precision is a clear strength');else if(acc<60)parts.push('Accuracy is the first area to tighten');else parts.push('Accuracy is holding at a workable level');
+ if(avg>150)parts.push('time pressure is visible in your average question time');else if(avg<45&&attempt>85)parts.push('your pace is aggressive');else parts.push('your pacing is reasonably controlled');
+ if(best&&weak&&best.n!==weak.n)parts.push(esc(best.n)+' leads while '+esc(weak.n)+' needs the most attention');
+ return parts.join('. ')+'.';
+}
 function vResult(){
- var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0,attemptedTime=0;
+ var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0;
  sm.subs.forEach(function(x){c+=x.c;w+=x.w;u+=x.u;t+=x.t});
- var pct=max>0?Math.max(0,sm.score)/max*100:0,tot=c+w+u||1,attempted=c+w;
- for(var qi=0;qi<N();qi++){if(E[qi].r!=='Unattempted')attemptedTime+=Number(S.q[qi].t||0)}
- var avgAll=N()?Math.round(t/N()):0,avgAttempt=attempted?Math.round(attemptedTime/attempted):0;
- var neg=Math.abs(E.reduce(function(a,e){return a+Math.min(0,Number(e.m)||0)},0));
- var best=sm.subs.slice().sort(function(a,b){return (b.acc-a.acc)||(b.m-a.m)})[0];
- var worst=sm.subs.slice().sort(function(a,b){return (a.acc-b.acc)||(a.m-b.m)})[0];
- var fastest=-1,slowest=-1;
- for(var ti=0;ti<N();ti++){if(E[ti].r!=='Unattempted'){if(fastest<0||S.q[ti].t<S.q[fastest].t)fastest=ti;if(slowest<0||S.q[ti].t>S.q[slowest].t)slowest=ti}}
- var verdict=pct>=75?'Strong performance':pct>=50?'Solid attempt':'Room to improve';
- var subCards=sm.subs.map(function(x,k){
-   var mx=Math.max(1,cfg.per*cfg.pos),p=Math.max(0,Math.min(100,x.m/mx*100));
-   var label=x.acc>=80?'Strong':x.acc>=60?'Steady':'Needs focus';
-   return '<article class="rc-sub" style="--a:'+COL[k%3]+'">'+
-    '<div class="rc-sub-top"><div><small>SUBJECT '+String(k+1).padStart(2,'0')+'</small><b>'+esc(x.n)+'</b></div><strong>'+x.acc+'%</strong></div>'+
-    '<div class="rc-bar"><i style="--w:'+p+'%"></i></div>'+
-    '<div class="rc-sub-f"><span class="g">'+x.c+' correct</span><span class="r">'+x.w+' wrong</span><span>'+x.u+' skipped</span><span>'+mm(x.t)+'</span></div>'+
-    '<div class="rc-sub-foot"><span>'+label+'</span><span>'+x.m+' marks</span></div>'+
-   '</article>';
- }).join('');
- var pal=SUB.map(function(n,k){
-   var s='';
-   for(var i=k*cfg.per;i<(k+1)*cfg.per&&i<N();i++){
-    var r=E[i].r;
-    s+='<button aria-label="Question '+(i+1)+'" class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*12)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>';
-   }
-   return '<div class="rc-pal-sec"><div class="rc-pal-title"><span style="color:'+COL[k%3]+'">'+esc(n)+'</span><small>'+sm.subs[k].c+'C · '+sm.subs[k].w+'W · '+sm.subs[k].u+'U</small></div><div class="rc-pal">'+s+'</div></div>';
- }).join('');
- var seg=function(v,cl){return '<i class="'+cl+'" style="--w:'+(v/tot*100)+'%"></i>'};
- var insight=[];
- if(best) insight.push('<b>'+esc(best.n)+'</b> is your strongest section at <b>'+best.acc+'% accuracy</b>.');
- if(worst&&sm.subs.length>1) insight.push('<b>'+esc(worst.n)+'</b> needs the most attention at <b>'+worst.acc+'% accuracy</b>.');
- if(neg) insight.push('You lost <b>'+neg+' marks</b> through negative marking.');
- if(attempted) insight.push('You attempted <b>'+attempted+'/'+N()+'</b> questions with an average of <b>'+fmtT(avgAttempt)+'</b> on attempted questions.');
- var insights=insight.slice(0,3).map(function(x,i){return '<div class="rc-insight"><span class="rc-insight-no">0'+(i+1)+'</span><p>'+x+'</p></div>'}).join('');
- var paceWidth=function(i){return i<0?0:Math.min(100,(S.q[i].t/Math.max(1,avgAll*2))*100)};
- return '<div class="rc-sec-head rc-result-head"><div><span class="rc-eyebrow">PERFORMANCE REPORT</span><h2>Your Result</h2><p>Detailed analysis of your submitted attempt.</p></div><div class="rc-actions">'+
-   '<button class="rc-btn" onclick="downloadReport()">Response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions</button>':'')+'</div></div>'+
- '<section class="rc-overview">'+
-   '<div class="rc-score-block"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff0d" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+(2*Math.PI*54)+'" stroke-dashoffset="'+(2*Math.PI*54)+'" data-to="'+((2*Math.PI*54)*(1-pct/100))+'" transform="rotate(-90 65 65)"></circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>/ '+max+'</span></div></div><div class="rc-score-copy"><span class="rc-status">'+verdict+'</span><h3>'+Math.round(pct)+'<small>%</small></h3><p>'+esc(S.type||'Test')+' · '+esc(S.name||'Student')+'</p></div></div>'+
-   '<div class="rc-stat-grid"><div class="rc-stat ok"><span>Correct</span><b data-count="'+c+'">0</b></div><div class="rc-stat bad"><span>Incorrect</span><b data-count="'+w+'">0</b></div><div class="rc-stat na"><span>Unattempted</span><b data-count="'+u+'">0</b></div><div class="rc-stat"><span>Accuracy</span><b data-count="'+sm.acc+'" data-suf="%">0</b></div><div class="rc-stat"><span>Attempt rate</span><b>'+Math.round(attempted/N()*100)+'%</b></div><div class="rc-stat"><span>Avg / question</span><b>'+fmtT(avgAll)+'</b></div></div>'+
- '</section>'+
- '<div class="rc-dist" aria-label="Answer distribution">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
- '<section class="rc-analysis-grid"><div class="rc-analysis-card"><div class="rc-section-label">QUICK READ</div><h3>What your paper says</h3>'+insights+'</div>'+
- '<div class="rc-analysis-card"><div class="rc-section-label">PACE</div><h3>Time discipline</h3><div class="rc-pace"><div><span>Average / all questions</span><b>'+fmtT(avgAll)+'</b></div><div><span>Average / attempted</span><b>'+fmtT(avgAttempt)+'</b></div><div><span>Total time recorded</span><b>'+fmtT(t)+'</b></div></div>'+
- (fastest>=0?'<div class="rc-pace-extremes"><span>Fastest Q'+(fastest+1)+' · '+fmtT(S.q[fastest].t)+'</span><span>Slowest Q'+(slowest+1)+' · '+fmtT(S.q[slowest].t)+'</span></div>':'')+
- '</div></section>'+
- '<section class="rc-section"><div class="rc-section-heading"><div><span class="rc-section-label">SUBJECT ANALYSIS</span><h3>Where you stand</h3></div><span class="rc-section-note">Marks · accuracy · time</span></div><div class="rc-subs">'+subCards+'</div></section>'+
- '<section class="rc-section"><div class="rc-section-heading"><div><span class="rc-section-label">QUESTION MAP</span><h3>Every question at a glance</h3></div><div class="rc-legend"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div></div>'+pal+'</section>'+
- '<section class="rc-section"><div class="rc-section-heading"><div><span class="rc-section-label">REVIEW</span><h3>Question-by-question</h3></div></div><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div><div id="rcList" class="rc-list">'+rows(sm)+'</div></section>';
+ var pct=max>0?Math.max(0,sm.score)/max*100:0,attempts=c+w,attemptRate=pct0(attempts/(N()||1)*100),accuracy=attempts?Math.round(c/attempts*100):0,avg=attempts?t/attempts:0;
+ var CIRC=2*Math.PI*54,tot=c+w+u||1;
+ var bestTime=null,worstTime=null;
+ E.forEach(function(x,i){var tt=Number(S.q[i].t)||0;if(tt>0&&(!worstTime||tt>worstTime.t))worstTime={i:i,t:tt};if(tt>0&&(!bestTime||tt<bestTime.t))bestTime={i:i,t:tt}});
+ var subjectMax=cfg.per*cfg.pos;
+ var subs=sm.subs.map(function(x,k){var p=subjectMax?Math.max(0,x.m)/subjectMax*100:0;return '<article class="rc-sub rc-reveal" style="--a:'+COL[k%3]+';--delay:'+(k*80)+'ms"><div class="rc-sub-top"><span class="rc-sub-index">0'+(k+1)+'</span><span class="rc-sub-state">'+perfLabel(x.acc)+'</span></div><div class="rc-sub-h"><b>'+esc(x.n)+'</b><span data-count="'+x.m+'">0</span><small>/ '+subjectMax+'</small></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' correct</span><span class="r">'+x.w+' wrong</span><span>'+x.u+' skipped</span><span>'+x.acc+'% accuracy</span><span>'+mm(x.t)+'</span></div></article>'}).join('');
+ var pal=SUB.map(function(n,k){var s='';for(var i=k*cfg.per;i<(k+1)*cfg.per;i++){var r=E[i].r;s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*18)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>'}return '<div class="rc-pal-sec"><div class="rc-pal-head"><small style="color:'+COL[k%3]+'">'+esc(n)+'</small><span>'+sm.subs[k].c+' correct · '+sm.subs[k].w+' wrong · '+sm.subs[k].u+' skipped</span></div><div class="rc-pal">'+s+'</div></div>'}).join('');
+ var dna=[['Precision',accuracy,'How often attempted questions were correct'],['Coverage',attemptRate,'How much of the paper you attempted'],['Pace',avg<=60?90:avg<=90?76:avg<=150?58:38,'Relative time efficiency'],['Consistency',sm.subs.length?Math.max(0,100-Math.min(100,Math.abs((Math.max.apply(null,sm.subs.map(function(x){return x.acc}))||0)-(Math.min.apply(null,sm.subs.map(function(x){return x.acc}))||0)))):0,'Balance across subjects']];
+ var dnaHtml=dna.map(function(d,k){return '<div class="rc-dna-row" style="--delay:'+(k*90)+'ms"><div><b>'+d[0]+'</b><small>'+d[2]+'</small></div><span><i style="--w:'+pct0(d[1])+'%"></i></span><strong>'+pct0(d[1])+'%</strong></div>'}).join('');
+ var timeRows=E.map(function(x,i){return {i:i,t:Number(S.q[i].t)||0,r:x.r}}).filter(function(x){return x.t>0}).sort(function(a,b){return b.t-a.t}).slice(0,8);
+ var maxTime=timeRows.length?timeRows[0].t:1;
+ var timeHtml=timeRows.map(function(x,k){return '<button class="rc-time-row" onclick="RCjump('+x.i+')" style="--delay:'+(k*55)+'ms"><span>Q'+(x.i%cfg.per+1)+'</span><div><i style="--w:'+Math.max(8,x.t/maxTime*100)+'%"></i></div><b>'+fmtT(x.t)+'</b><em class="'+(x.r==='Correct'?'ok':x.r==='Incorrect'?'bad':'na')+'">'+(x.r==='Correct'?'CORRECT':x.r==='Incorrect'?'WRONG':'SKIPPED')+'</em></button>'}).join('');
+ var best=sm.subs.slice().sort(function(a,b){return b.acc-a.acc})[0],weak=sm.subs.slice().sort(function(a,b){return a.acc-b.acc})[0];
+ var focus=weak?'<b>'+esc(weak.n)+'</b> is your clearest improvement area at <strong>'+weak.acc+'% accuracy</strong>.': 'Use this report to identify your next focus area.';
+ return '<div class="rc-result-head rc-reveal"><div><span class="rc-eyebrow">POST-TEST INTELLIGENCE</span><h2>Here is how you performed.</h2><p>Every answer, second and decision has been distilled into one performance report.</p></div><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions PDF</button>':'')+'<button class="rc-btn" onclick="downloadReport()">Response sheet</button></span></div>'+
+ '<section class="rc-hero rc-reveal"><div class="rc-hero-grid"><div class="rc-score-orb"><div class="rc-orb-grid"></div><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-Math.min(1,pct/100)))+'" transform="rotate(-90 65 65)"/></svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div><div class="rc-hero-copy"><span class="rc-status">RESULT GENERATED <i></i></span><div class="rc-big-pct"><b data-count="'+Math.round(pct)+'" data-suf="%">0</b><span>overall score</span></div><p>'+insightLine(sm,c,w,u,t)+'</p><div class="rc-hero-meta"><span><b>'+fmtT(t)+'</b> time</span><span><b>'+attemptRate+'%</b> attempted</span><span><b>'+accuracy+'%</b> accuracy</span></div></div></div></section>'+
+ '<section class="rc-kpi-grid">'+[['CORRECT',c,'ok'],['INCORRECT',w,'bad'],['UNATTEMPTED',u,'na'],['ACCURACY',accuracy+'%',''],['ATTEMPT RATE',attemptRate+'%',''],['AVG / QUESTION',fmtT(avg),'time']].map(function(x,k){return '<div class="rc-kpi rc-reveal" style="--delay:'+(k*55)+'ms"><span>'+x[0]+'</span><b class="'+x[2]+'">'+x[1]+'</b></div>'}).join('')+'</section>'+
+ '<section class="rc-analysis-grid"><article class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">PERFORMANCE DNA</span><h3>What shaped this score?</h3></div><span class="rc-mini-dot"></span></div><div class="rc-dna">'+dnaHtml+'</div></article><article class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">QUICK READ</span><h3>The useful stuff</h3></div></div><div class="rc-insights"><div><span>01</span><p><b>Strongest area</b>'+ (best?esc(best.n)+' · '+best.acc+'% accuracy':'Not enough data')+'</p></div><div><span>02</span><p><b>Priority area</b>'+focus+'</p></div><div><span>03</span><p><b>Time signal</b>'+ (worstTime?'Q'+(worstTime.i%cfg.per+1)+' took '+fmtT(worstTime.t)+'. '+(bestTime?'Your fastest recorded question was Q'+(bestTime.i%cfg.per+1)+' at '+fmtT(bestTime.t)+'.':''):'No question-time data available.')+'</p></div></div></article></section>'+
+ '<section class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">SUBJECT INTELLIGENCE</span><h3>Where the marks came from</h3></div><span class="rc-panel-note">'+SUB.length+' sections</span></div><div class="rc-subs">'+subs+'</div></section>'+
+ '<section class="rc-analysis-grid"><article class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">TIME ANALYSIS</span><h3>Where your minutes went</h3></div><span class="rc-panel-note">slowest first</span></div><div class="rc-time">'+(timeHtml||'<div class="rc-empty">Question timing is not available for this attempt.</div>')+'</div></article><article class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">ATTEMPT PROFILE</span><h3>Decision pattern</h3></div></div><div class="rc-profile"><div class="rc-profile-ring"><b>'+attemptRate+'%</b><span>paper covered</span></div><div class="rc-profile-copy"><p><b>'+c+'</b> correct from <b>'+attempts+'</b> attempted.</p><p><b>'+w+'</b> incorrect answers contributed to negative marking.</p><p><b>'+u+'</b> questions were left untouched.</p></div></div></article></section>'+
+ '<section class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">QUESTION JOURNEY</span><h3>Every question, mapped</h3></div><div class="rc-legend"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div></div>'+pal+'</section>'+
+ '<section class="rc-panel rc-reveal"><div class="rc-panel-head"><div><span class="rc-eyebrow">DETAILED REVIEW</span><h3>Question-by-question</h3></div></div><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div><div id="rcList" class="rc-list">'+rows(sm)+'</div></section>'+
+ '<section class="rc-next rc-reveal"><div><span class="rc-eyebrow">NEXT MOVE</span><h3>Turn this attempt into your next improvement.</h3><p>'+focus+' Review the incorrect questions before starting another paper.</p></div><div class="rc-next-mark"><span>FOCUS</span><b>'+ (weak?esc(weak.n).toUpperCase():'REVIEW') +'</b></div></section>';
 }
 function rows(sm){
  var E=sm.E,h='',n=0;
