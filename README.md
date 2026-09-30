@@ -5,7 +5,7 @@ Production-focused CBT + admin control build.
 ## Database setup
 
 ### Fresh Supabase project
-Run **`RUN-ALL-SQL-V10.sql`** once in Supabase → SQL Editor.
+See sql/README.md for the exact SQL run order.
 
 ### Existing MDCCCVII database
 Run **`MDCCCVII-DB-V10.sql`** once after your existing setup.
