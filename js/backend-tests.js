@@ -61,9 +61,14 @@
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,multiple_correct,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
+    let data,error;
+    ({data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,multiple_correct,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true}));
+    if(error){
+      console.warn('multiple_correct column unavailable; falling back to legacy test schema:',error.message);
+      ({data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true}));
+    }
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
-    tests=data||[];
+    tests=(data||[]).map(t=>({...t,multiple_correct:t.multiple_correct===true}));
     try{const uid=sessionData.session.user.id,{data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',uid).eq('status','submitted');doneMap={};(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1})}catch(e){console.warn('Attempt counts unavailable',e.message)}
     render();
   }

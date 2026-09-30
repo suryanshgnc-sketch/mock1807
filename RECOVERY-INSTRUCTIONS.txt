@@ -1,0 +1,12 @@
+MDCCCVII TESTS — BACKEND RECOVERY PATCH
+
+1. Do NOT run the old RESULT-FEATURES-MIGRATION.sql from the previous patch.
+2. In Supabase SQL Editor, run SQL/MDCCCVII-RECOVERY-ONE-SHOT.sql once.
+3. Replace these files in the site:
+   js/backend-tests.js
+   js/app.js
+   admin/admin.js
+   admin/index.html
+4. Hard refresh the site (Ctrl+Shift+R).
+
+The SQL is designed to be re-runnable and restores the V10.2 secure test RPCs, attempt grants, answer-key publishing, multiple-correct scoring, and correction-PDF storage access.
