@@ -1,0 +1,18 @@
+MDCCCVII TESTS — ROLE HIERARCHY V13
+
+1. Deploy the updated website.
+2. In Supabase SQL Editor, run:
+   ADMIN-V9-HIERARCHY.sql
+
+The migration preserves existing admins. The oldest existing admin becomes the immutable SUPER ADMIN / OWNER. Other existing admins remain ADMIN.
+
+Hierarchy:
+SUPER ADMIN / OWNER → ADMIN → MODERATOR → STUDENT
+
+Permissions:
+- Owner: full role management except cannot be removed/demoted through the portal.
+- Admin: can manage moderators/students, but cannot manage the owner or other admins.
+- Moderator: no role-management authority.
+- Student: normal student access.
+
+The legacy is_admin flag is kept synchronized so existing database policies continue to work.

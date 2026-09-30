@@ -22,3 +22,5 @@ Verified:
 - CSS/JS patch contains no SQL.
 
 Important: replace files at the exact paths above; do not overwrite other files.
+
+V13: added immutable owner/admin/moderator/student hierarchy. Run ADMIN-V9-HIERARCHY.sql.
