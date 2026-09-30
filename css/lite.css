@@ -1,0 +1,6 @@
+/* Low-end device mode: html.lite is set by the head script in index.html */
+html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;text-shadow:none!important}
+html.lite *{box-shadow:none!important}
+html.lite canvas,html.lite .hx-canvas,html.lite .cine-reel,html.lite [class*="confetti"],html.lite [class*="spotlight"],html.lite [class*="aurora"]{display:none!important}
+html.lite [data-reveal],html.lite .reveal{opacity:1!important;transform:none!important}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
