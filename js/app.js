@@ -173,7 +173,6 @@ function act(a){
 }
 function nav(d){const i=S.cur+d;if(i>=0&&i<N())go(i)}
 let __syncDebounce=0;function setAns(v){S.q[S.cur].a=v;if(S.q[S.cur].s<2)S.q[S.cur].s=2;saveSess();renderPal();updateResponseState();if(window.syncBackendNow){clearTimeout(__syncDebounce);__syncDebounce=setTimeout(()=>window.syncBackendNow(),650)}}
-function toggleMultiAns(v){const q=S.q[S.cur];let a=String(q.a||'').split('+').filter(Boolean);a=a.includes(String(v))?a.filter(x=>x!==String(v)):[...a,String(v)];a.sort((x,y)=>Number(x)-Number(y));setAns(a.join('+'));render();}
 
 /* ---------- Renderers ---------- */
 function render(){
@@ -198,9 +197,7 @@ function render(){
   </div>`;
   const ai=$('#ans');ai.oninput=()=>{const v=ai.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1').slice(0,12);ai.value=v;setAns(v)};
  }else{
-  const multi=!!S.multiCorrect;
-  const selected=String(q.a||'').split('+').filter(Boolean);
-  $('#qbody').innerHTML=`<div class="response-prompt"><strong>${multi?'Choose one or more answers.':'Choose one answer.'}</strong><br>${multi?'This test uses multiple-correct MCQs. Select every applicable option.':'Use the question paper on the left to read the question and options.'}</div><div class="mcq-grid ${multi?'multi-mode':''}">${['A','B','C','D'].map((letter,idx)=>{const v=String(idx+1),on=selected.includes(v);return `<button type="button" class="mcq-btn ${on?'selected':''}" onclick="${multi?`toggleMultiAns('${v}')`:`setAns('${v}')`}"><span class="mcq-letter">${letter}</span> ${on?'Selected':'Select option '+letter}</button>`}).join('')}</div><div class="response-note">Marking: +${cfg.pos} for correct · −${cfg.negA} for incorrect.</div>`;
+  $('#qbody').innerHTML=`<div class="response-prompt"><strong>Choose one answer.</strong><br>Use the question paper on the left to read the question and options.</div><div class="mcq-grid">${['A','B','C','D'].map((letter,idx)=>{const v=idx+1;return `<button type="button" class="mcq-btn ${q.a==v?'selected':''}" onclick="setAns('${v}')"><span class="mcq-letter">${letter}</span> ${q.a==v?'Selected':'Select option '+letter}</button>`}).join('')}</div><div class="response-note">Marking: +${cfg.pos} for correct · −${cfg.negA} for incorrect.</div>`;
  }
  renderPal();
 }
@@ -246,7 +243,7 @@ function evaluate(){
   let ok;const k=(S.key[i]||'').trim();
   if(S.mode==='B'){if(S.man[i]===undefined)return{r:'No Key',m:0,c:''};ok=S.man[i]===true;}
   else{if(k==='')return{r:'No Key',m:0,c:''};
-   const normSet=v=>String(v||'').toUpperCase().split(/[+|&\/]/).map(x=>({A:'1',B:'2',C:'3',D:'4'}[x.trim()]||x.trim())).filter(Boolean).sort((a,b)=>Number(a)-Number(b)).join('+'); const kk=isNum(i)?k:normSet(k);ok=isNum(i)?(Number.isFinite(parseFloat(q.a))&&Number.isFinite(parseFloat(kk))&&Math.abs(parseFloat(q.a)-parseFloat(kk))<1e-9):(S.multiCorrect?normSet(q.a)===kk:q.a===kk)}
+   const kk=isNum(i)?k:({A:'1',B:'2',C:'3',D:'4'}[k.toUpperCase()]||k);ok=isNum(i)?(Number.isFinite(parseFloat(q.a))&&Number.isFinite(parseFloat(kk))&&Math.abs(parseFloat(q.a)-parseFloat(kk))<1e-9):(q.a===kk)}
   return ok?{r:'Correct',m:cfg.pos,c:k}:{r:'Incorrect',m:-(isNum(i)?cfg.negB:cfg.negA),c:k};
  });
 }
@@ -333,11 +330,11 @@ function parseKey(t){
  if(!raw)return {k:[],n:0,error:'Answer key is empty.'};
  const tokens=raw.split(',').map(x=>x.trim()).filter(x=>x!=='');
  if(tokens.length!==N())return {k:tokens,n:tokens.length,error:`Expected exactly ${N()} comma-separated answers, but found ${tokens.length}.`};
- const k=tokens.map((token,i)=>{if(isNum(i))return normalizeKeyToken(token);return String(token).toUpperCase().split(/[+|&\/]/).map(x=>normalizeKeyToken(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b)).join('+')});
+ const k=tokens.map(normalizeKeyToken);
  const bad=[];
  k.forEach((x,i)=>{
    if(!x)return bad.push(i+1);
-   if(!isNum(i)&&!/^([1-4])(\+[1-4]){0,3}$/.test(x))bad.push(i+1);
+   if(!isNum(i)&&!['1','2','3','4'].includes(x))bad.push(i+1);
    if(isNum(i)&&!/^[-+]?\d+(?:\.\d+)?$/.test(x))bad.push(i+1);
  });
  return {k,n:k.length,error:bad.length?`Invalid answer format at question(s): ${bad.join(', ')}.`:''};
