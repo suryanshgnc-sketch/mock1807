@@ -6,9 +6,8 @@
   <title>MDCCCVII · Control Center</title>
   <meta name="theme-color" content="#080a0d">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=5">
-  <link rel="stylesheet" href="pro.css">
-  <link rel="stylesheet" href="mdcccvii-admin.css">
+  <script>try{var t=JSON.parse(localStorage.getItem('md_theme')||'"dark"');document.documentElement.dataset.theme=t==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+  <link rel="stylesheet" href="admin.css?v=6">
 </head>
 <body>
   <div id="loading" class="center"><div class="loader"></div><p>Checking admin access…</p></div>
@@ -45,7 +44,7 @@
     <main class="main">
       <header class="topbar">
         <div><div class="eyebrow">CONTROL CENTER</div><h1 id="viewTitle">Overview</h1></div>
-        <div class="top-actions"><button id="refresh" class="ghost">↻ Refresh</button><button id="newTestTop" class="primary small">+ New Test</button></div>
+        <div class="top-actions"><button id="themeBtn" class="ghost" type="button" title="Switch theme">◐ Theme</button><button id="refresh" class="ghost">↻ Refresh</button><button id="newTestTop" class="primary small">+ New Test</button></div>
       </header>
       <div id="toast" class="toast hidden"></div>
       <section id="content"></section>
@@ -82,9 +81,11 @@
 
   <div id="studentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-student></div><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">STUDENT CONTROL</div><h2>Edit student</h2></div><button class="icon-btn" data-close-student>×</button></div><form id="studentForm"><input type="hidden" name="id"><div class="form-grid"><label class="wide">Display name<input name="name" required maxlength="80" placeholder="Student name"></label><label class="wide">Account status<select name="blocked"><option value="false">Active — can access tests</option><option value="true">Blocked — cannot access tests</option></select></label></div><div id="studentStats" class="student-stats"></div><div class="grant-box"><div class="eyebrow">ATTEMPT CONTROL</div><div class="grant-grid"><select id="grantTest"></select><input id="grantCount" type="number" min="1" max="20" value="1" placeholder="Attempts"><input id="grantNote" maxlength="160" placeholder="Reason / note"><button type="button" class="ghost" id="grantAttemptBtn">+ Grant attempt</button></div></div><div id="studentFormError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-student>Cancel</button><button type="submit" class="primary">Save student</button></div></form></div></div>
 
+  <div id="purgeModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-purge></div><div class="modal-card narrow dangerous"><div class="modal-head"><div><div class="eyebrow">DANGER ZONE</div><h2>Delete test forever</h2></div><button class="icon-btn" data-close-purge type="button">×</button></div><p class="muted" id="purgeInfo"></p><label class="muted" style="display:block;font-size:13px">Type the test name to confirm<input id="purgeInput" autocomplete="off" style="width:100%;margin-top:7px"></label><div id="purgeError" class="error hidden"></div><div class="modal-foot"><button type="button" class="ghost" data-close-purge>Cancel</button><button type="button" id="purgeGo" class="primary danger-fill" disabled>Delete forever</button></div></div></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js?v=6"></script>
-  <script src="keys.js?v=2"></script>
+  <script src="admin.js?v=7"></script>
+  <script src="keys.js?v=3"></script>
   <script src="motion.js"></script>
 </body>
 </html>

@@ -67,3 +67,10 @@ New UI: live hero console (cursor, typing, palette, live ranking), scroll traile
 
 ## Home page motion (gravity)
 Hero: headline letters drop and bounce in, 18 neon symbols fall under real 2D physics (gravity, collisions, bounce), drag and throw them, double-click adds more, Zero-G / Reset buttons, cursor spotlight. Blocks lean with scroll speed. Touch devices: fewer symbols, no drag (so page scroll is never blocked). "Reduce motion" turns all of it off. Code: `js/gravity.js`, styles at the end of `css/cinematic.css`.
+
+## UI update (CBT + admin theme, no backend changes)
+- `css/cbt-theme.css` is the single theme layer for the exam screen (dark = neon site theme, light via `html[data-theme=light]`). The storage notice and shortcut panel no longer float over the exam; old blue leftovers are overridden.
+- Exam PDF now renders in an `<iframe>` with Reload / Open-in-new-tab controls (works on mobile browsers where `<embed>` PDFs do not).
+- Settings → "Exam & admin theme" is a real Dark/Light switch (stored in `md_theme`, shared with the admin panel).
+- Admin: `pro.css` and `mdcccvii-admin.css` removed; one tokenized `admin/admin.css` (dark/light). Answer-key panel is themed and only shows on the Tests view.
+- Admin → Tests: new **Delete forever** button (works on archived tests too). It asks you to type the test name, then deletes the `tests` row (attempts/answers/keys cascade via existing foreign keys) and removes the test's PDFs from storage. No SQL was changed; if your `tests` table has no admin DELETE policy, the admin sees a clear error instead of a silent failure.

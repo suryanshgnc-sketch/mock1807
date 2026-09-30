@@ -74,7 +74,7 @@ function settings(){
    </div>
    <div class="settings-section"><div class="settings-section-title"><span>02</span><div><b>Interface</b><small>Display preferences for the MDCCCVII workspace.</small></div></div>
     <div class="settings-preferences">
-      <div class="pref-row"><div><b>Dark exam interface</b><small>Keep the high-contrast MDCCCVII black / neon theme.</small></div><span class="toggle on"><i></i></span></div>
+      <div class="pref-row"><div><b>Exam &amp; admin theme</b><small>Applies to the exam screen and the admin panel on this device.</small></div><button type="button" class="btn w" id="themeSwitch" onclick="toggleTheme()">${document.documentElement.dataset.theme==='light'?'☀ Light':'☾ Dark'}</button></div>
       <div class="pref-row"><div><b>Motion effects</b><small>Use subtle transitions and dashboard animations.</small></div><span class="toggle on"><i></i></span></div>
       <div class="pref-row"><div><b>Autosave</b><small>Your local session is periodically saved automatically.</small></div><span class="toggle on"><i></i></span></div>
     </div>
@@ -86,6 +86,7 @@ function settings(){
   <div class="settings-footer"><span>Changes to scoring defaults do not modify submitted backend results.</span><div><button class="btn w" onclick="closeM()">Cancel</button><button class="btn g" onclick="saveCfg()">Save changes</button></div></div>
  </div>`);
 }
+function toggleTheme(){const n=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=n;Store.set('md_theme',n);const b=document.getElementById('themeSwitch');if(b)b.textContent=n==='light'?'☀ Light':'☾ Dark'}
 function saveCfg(){
  const v=i=>Math.abs(parseFloat($('#s'+i).value))||0;
  cfg.pos=v(1);cfg.negA=v(2);cfg.negB=v(3);
@@ -119,7 +120,7 @@ function pdfView(){
  const page=Math.max(1,Number($('#pg')?.value||1));
  $('#zl').textContent=pdfZoom+'%';
  const pn=$('#paperName');if(pn)pn.textContent=pdfName||'Question Paper';
- $('#pdf').innerHTML=`<embed class="pdf-frame" type="application/pdf" src="${pdfUrl}#page=${page}&zoom=${pdfZoom}" aria-label="Question paper">`;
+ $('#pdf').innerHTML=`<iframe class="pdf-frame" src="${pdfUrl}#page=${page}&zoom=${pdfZoom}" title="Question paper"></iframe><div class="pdf-fallback">Paper not showing? <button type="button" onclick="pdfView()">Reload</button><button type="button" onclick="openPaper()">Open in new tab</button></div>`;
 }
 function zoom(d){pdfZoom=Math.min(300,Math.max(50,pdfZoom+d));pdfView()}
 function fitPaper(){pdfZoom=100;pdfView()}

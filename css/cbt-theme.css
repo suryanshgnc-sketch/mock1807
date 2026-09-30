@@ -1,0 +1,90 @@
+/* MDCCCVII CBT — single theme layer for the exam screen (#app). Loaded last.
+   Dark = site neon theme (default). Light = html[data-theme=light]. Only tokens change between themes. */
+html #app{--bg:#070a08;--panel:#0c110e;--panel2:#111711;--line:#202821;--line2:#2d3a30;--tx:#e8eee9;--mu:#8a978c;--ac:#86ff3f;--ink:#061006;--ac-soft:rgba(134,255,63,.10);
+ --s0:#111711;--s0t:#7c887f;--s1:#2a1519;--s1t:#ff9ba0;--s1b:#59282e;--s2:#17301d;--s2t:#9cff83;--s2b:#2e6238;--s3:#2a2140;--s3t:#c9b3ff;--s3b:#54428a;--warn:#ffc45c;--bad:#ff7a85;--pdfbg:#141715}
+html[data-theme=light] #app{--bg:#eef2ec;--panel:#fff;--panel2:#f2f5f0;--line:#d9e1d4;--line2:#bccab4;--tx:#101710;--mu:#5d6b5f;--ac:#2f9e0a;--ink:#fff;--ac-soft:rgba(47,158,10,.10);
+ --s0:#f2f5f0;--s0t:#5d6b5f;--s1:#fdeaec;--s1t:#c62834;--s1b:#f0b8be;--s2:#e4f5df;--s2t:#207a05;--s2b:#a9d9a0;--s3:#efe8fb;--s3t:#6a3fc4;--s3b:#c9b6ee;--warn:#a56a00;--bad:#c62834;--pdfbg:#dfe5db}
+html #app,html #app *{scrollbar-color:var(--line2) transparent}
+html #app{background:var(--bg)!important;color:var(--tx)!important}
+html #app header,html #app>footer{background:var(--panel)!important;color:var(--tx)!important;border-color:var(--line)!important}
+html #app header{border-bottom:1px solid var(--line)!important;box-shadow:none!important}
+html #app>footer{border-top:1px solid var(--line)!important;position:relative}
+html #app header .logo b,html #app .cand b{color:var(--tx)!important}
+html #app header .logo i{background:var(--ac-soft)!important;color:var(--ac)!important;border-color:var(--line2)!important}
+html #app .cand{color:var(--mu)!important}
+html #app #timer{background:var(--ac-soft)!important;color:var(--ac)!important;border:1px solid var(--line2)!important}
+html #app #timer.or{background:transparent!important;color:var(--warn)!important;border-color:var(--warn)!important}
+html #app #timer.rd{background:transparent!important;color:var(--bad)!important;border-color:var(--bad)!important}
+html #app #candidatePhoto:not([src]),html #app #candidatePhoto[src=""]{display:none}
+html #app #obar{background:var(--panel2)!important;border-bottom:1px solid var(--line)!important}
+html #app .exam-title>b{color:var(--tx)!important}html #app .exam-title>span{color:var(--mu)!important}
+html #app #obar .tab{background:var(--panel)!important;color:var(--mu)!important;border:1px solid var(--line)!important}
+html #app #obar .tab:hover{color:var(--tx)!important;border-color:var(--line2)!important}
+html #app #obar .tab.on{background:var(--ac)!important;color:var(--ink)!important;border-color:var(--ac)!important;box-shadow:none!important}
+html #app .exam-progress{color:var(--mu)!important}html #app .exam-progress>div{background:var(--line)!important;width:120px!important;height:5px!important}html #app .exam-progress i{background:var(--ac)!important;display:block;height:100%}
+html #app #left{background:var(--bg)!important;border-right:1px solid var(--line)!important}
+html #app #bar{background:var(--panel)!important;border-bottom:1px solid var(--line)!important;color:var(--mu)!important}
+html #app .paper-title span{color:var(--mu)!important}html #app .paper-title b{color:var(--tx)!important}
+html #app .tool-btn,html #app #bar input{background:var(--panel2)!important;color:var(--tx)!important;border:1px solid var(--line)!important}
+html #app .tool-btn:hover{border-color:var(--ac)!important}
+html #app #pdf{background:var(--pdfbg)!important}
+html #app #right{background:var(--bg)!important;border:0!important}
+html #app .response-head{background:var(--panel)!important;border-bottom:1px solid var(--line)!important}
+html #app .response-head .eyebrow{color:var(--mu)!important}
+html #app .badge{color:var(--ac)!important;background:none!important}
+html #app #qh{background:none!important;color:var(--tx)!important;padding:0!important;margin:2px 0 0!important;border-radius:0!important;font-size:20px!important}
+html #app .question-counter b{color:var(--tx)!important}html #app .question-counter span{color:var(--mu)!important}
+html #app .leg{background:var(--bg)!important;color:var(--mu)!important}
+html #app .leg div{display:flex;align-items:center;gap:6px}
+html #app .leg .pal{width:22px!important;height:22px!important;min-width:22px;margin:0!important;padding:0!important;font-size:10px!important;line-height:20px;display:inline-grid;place-items:center;border-radius:6px!important;clip-path:none!important}
+html #app .palette-head{background:var(--panel)!important;color:var(--tx)!important;border-color:var(--line)!important}html #app .palette-head span{color:var(--mu)!important}
+html #app #grid{background:var(--bg)!important}
+html #app .pal{background:var(--s0)!important;color:var(--s0t)!important;border:1px solid var(--line)!important;border-radius:7px!important;clip-path:none!important}
+html #app .pal.st1{background:var(--s1)!important;color:var(--s1t)!important;border-color:var(--s1b)!important}
+html #app .pal.st2{background:var(--s2)!important;color:var(--s2t)!important;border-color:var(--s2b)!important}
+html #app .pal.st3,html #app .pal.st4{background:var(--s3)!important;color:var(--s3t)!important;border-color:var(--s3b)!important;border-radius:50%!important}
+html #app .pal.st4:after{content:"✓";background:var(--s2)!important;color:var(--s2t)!important;border:1px solid var(--s2b);width:13px;height:13px;line-height:11px;font-size:9px;right:-3px;bottom:-4px}
+html #app #grid .pal.cur{outline:2px solid var(--ac)!important;outline-offset:1px;color:var(--tx)!important}
+html #app .qa{background:var(--panel)!important;border:1px solid var(--line)!important}
+html #app .qa:before{background:var(--panel2)!important;color:var(--mu)!important;border-color:var(--line)!important}
+html #app .response-prompt,html #app .response-note{color:var(--mu)!important}html #app .response-prompt strong{color:var(--tx)!important}
+html #app .mcq-btn{background:var(--panel2)!important;color:var(--tx)!important;border:1px solid var(--line)!important;border-radius:9px!important}
+html #app .mcq-btn:hover{border-color:var(--ac)!important}
+html #app .mcq-letter{background:var(--panel)!important;color:var(--mu)!important;border:1px solid var(--line)!important}
+html #app .mcq-btn.selected{background:var(--ac-soft)!important;border-color:var(--ac)!important}
+html #app .mcq-btn.selected .mcq-letter,html #app .mcq-letter.selected{background:var(--ac)!important;color:var(--ink)!important;border-color:var(--ac)!important}
+html #app .num-label{color:var(--mu)!important}
+html #app .nta-num-input{background:var(--panel2)!important;color:var(--tx)!important;border:1px solid var(--line2)!important;border-radius:9px!important}
+html #app .nta-num-input:focus{outline:2px solid var(--ac);border-color:var(--ac)!important}
+html #app .nta-keypad button{background:var(--panel2)!important;color:var(--tx)!important;border:1px solid var(--line)!important;border-radius:8px!important;box-shadow:none!important}
+html #app .nta-keypad button:hover{border-color:var(--ac)!important;background:var(--ac-soft)!important}
+html #app .nta-keypad .clear-key{color:var(--warn)!important}
+html #app .acts{background:var(--panel)!important;border-top:1px solid var(--line)!important}
+html #app .btn,html #app .nb{border-radius:8px!important;font-weight:800!important;box-shadow:none!important}
+html #app .acts .btn.g,html #app>footer .nb.dk{background:var(--ac)!important;color:var(--ink)!important;border:1px solid var(--ac)!important}
+html #app .acts .btn.o{background:transparent!important;color:var(--warn)!important;border:1px solid var(--warn)!important}
+html #app .acts .btn.w,html #app .nb{background:var(--panel2)!important;color:var(--tx)!important;border:1px solid var(--line2)!important}
+html #app .acts .btn:not(.g):not(.o):not(.w){background:var(--s3)!important;color:var(--s3t)!important;border:1px solid var(--s3b)!important}
+html #app>footer .btn.g{background:var(--bad)!important;color:#fff!important;border:1px solid var(--bad)!important;padding:10px 26px!important}
+html #app>footer .btn.g:hover{filter:brightness(1.1)}
+/* stray panels: never over the exam */
+#app:not([hidden])~#pf-consent,body.in-exam #pf-consent{display:none!important}
+html .cbt-keys{left:50%!important;bottom:11px!important;transform:translateX(-50%)}
+html .cbt-keys button{background:var(--panel2,#111711)!important;color:var(--tx,#e8eee9)!important;border:1px solid var(--line2,#2d3a30)!important}
+html .cbt-keys>div{background:var(--panel,#0c110e)!important;color:var(--tx,#e8eee9)!important;border-color:var(--line2,#2d3a30)!important;text-align:left}
+html[data-theme=light] .cbt-keys kbd{background:#eef2ec;color:#2f9e0a}
+/* header fit, legend chip, submit contrast, PDF fallback */
+html #app header{height:auto!important;min-height:72px}
+html #app .cand{line-height:1.25!important}
+html #app .leg .pal.st4:after{display:none}html #app .leg .pal.st4{box-shadow:inset 0 0 0 2px var(--s2b)}
+html #app>footer .btn.g{background:#d7333f!important;border-color:#d7333f!important}
+html #app #pdf{display:flex!important;flex-direction:column;gap:8px;overflow:hidden!important}
+html #app #pdf .pdf-frame{flex:1;min-height:0!important;border:1px solid var(--line)!important;border-radius:8px}
+html #app .pdf-fallback{flex:none;display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--mu)}
+html #app .pdf-fallback button{background:var(--panel2);color:var(--tx);border:1px solid var(--line2);border-radius:7px;padding:4px 10px;font-size:12px}
+html #app .pdf-fallback button:hover{border-color:var(--ac)}
+html #app header #timer{color:var(--ac)!important}html #app header #timer.or{color:var(--warn)!important}html #app header #timer.rd{color:var(--bad)!important}
+html #app .save-state:not(.saving):not(.offline){color:var(--ac)!important}
+html .cbt-toast:not(.show){opacity:0;pointer-events:none}
+html #app header .logo img{background:transparent!important}
+@media(max-width:900px){html .cbt-keys{display:none!important}html #app #bar{height:auto!important;flex-wrap:wrap;gap:6px}html #app .acts{position:sticky;bottom:0;z-index:5}html #app #pdf{min-height:46vh}}
