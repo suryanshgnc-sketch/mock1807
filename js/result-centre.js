@@ -1,11 +1,11 @@
 /* Result Centre: neon results page. Checking unlocks only when the admin has published the answer key. */
 (function(){
 'use strict';
-var RC={sid:null,st:'loading',view:'home',filter:'all',sec:0};
+var RC={sid:null,st:'loading',view:'home',filter:'all',sec:0,correction:false};
 var COL=['#5eead4','#a78bfa','#fbbf24'];
 var q=function(s){return document.querySelector(s)};
 var L=function(i){return 'ABCD'[+i-1]};
-function disp(i,v){v=String(v==null?'':v).trim();if(v==='')return '\u2014';return isNum(i)?v:(L(v)||v)}
+function disp(i,v){v=String(v==null?'':v).trim();if(v==='')return '\u2014';if(isNum(i))return v;return v.split('+').map(function(x){return L(x)||x}).join(' + ')}
 function fmtT(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s'}
 /* ---- neutralise every manual-check entry point ---- */
 ['manualSet','manualAll','showKeyPdf','keyPdf','pasteKey','clearKey'].forEach(function(n){window[n]=function(){}});
@@ -20,14 +20,18 @@ var ILL={
 function bg(){return '<div class="rc-bg"><i></i><i></i><i></i><span></span></div>'}
 function top(sub){return '<header class="rc-top"><button class="rc-back" onclick="goHome()">\u2190 Home</button><div class="rc-id"><small>RESULT CENTRE</small><h1>'+esc(S.name||'Student')+'</h1></div><div class="rc-meta"><b>'+esc(S.type||'Test')+'</b><span>'+esc(S.date||'')+'</span></div>'+(sub||'')+'</header>'}
 /* ---- key fetch ---- */
+async function refreshCorrectionAvailability(){
+ var c=window.mock1807Auth&&window.mock1807Auth.client;RC.correction=false;if(!c||!S.backendTestId)return;
+ try{var r=await c.storage.from('test-pdfs').createSignedUrl('tests/'+S.backendTestId+'/key-corrections.pdf',300);RC.correction=!!(r.data&&r.data.signedUrl&&!r.error)}catch(e){RC.correction=false}
+}
 async function fetchKey(){
- if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';return}
+ if(S.keyFromServer&&S.key&&S.key.length===N()){RC.st='ready';await refreshCorrectionAvailability();return}
  var c=window.mock1807Auth&&window.mock1807Auth.client;
  if(!c||!S.backendTestId){RC.st='locked';RC.why='practice';return}
  try{
   var r=await c.rpc('get_answer_key',{p_test_id:S.backendTestId});
   if(r.error)throw r.error;
-  if(Array.isArray(r.data)&&r.data.length===N()){S.key=r.data.map(function(x){return String(x).trim()});S.keyFromServer=true;RC.st='ready'}
+  if(Array.isArray(r.data)&&r.data.length===N()){S.key=r.data.map(function(x){return String(x).trim()});S.keyFromServer=true;RC.st='ready';await refreshCorrectionAvailability()}
   else{RC.st='locked';RC.why='pending'}
  }catch(e){RC.st='locked';RC.why='pending';RC.err=e&&e.message}
 }
@@ -50,7 +54,14 @@ window.RCsolutions=async function(){
   if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
  catch(e){if(w)w.close();alert('The key / solutions PDF is not available for this test yet.')}
 };
-function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions (PDF)</button>':'')}
+window.RCcorrections=async function(){
+ var c=window.mock1807Auth&&window.mock1807Auth.client;if(!c||!S.backendTestId)return;
+ var w=window.open('','_blank');
+ try{var r=await c.storage.from('test-pdfs').createSignedUrl('tests/'+S.backendTestId+'/key-corrections.pdf',3600);
+  if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
+ catch(e){if(w)w.close();alert('No key-corrections PDF has been published for this test yet.')}
+};
+function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions PDF</button>' +(RC.correction?'<button class="rc-btn correction" onclick="RCcorrections()">Key corrections PDF</button>':''):'')}
 /* ---- views ---- */
 function vLoading(){return '<div class="rc-center">'+ILL.lock+'<h2>Checking the vault\u2026</h2><div class="rc-scan"><i></i></div></div>'}
 function vLocked(){
@@ -72,46 +83,19 @@ function vResult(){
  var sm=summary(),E=sm.E,max=Number(S.maxMarks||N()*cfg.pos),c=0,w=0,u=0,t=0;
  sm.subs.forEach(function(x){c+=x.c;w+=x.w;u+=x.u;t+=x.t});
  var pct=max>0?Math.max(0,sm.score)/max:0,CIRC=2*Math.PI*54,tot=c+w+u||1;
- var attempted=c+w,attemptRate=Math.round(attempted/N()*100),neg=Math.abs(E.reduce(function(a,e){return a+Math.min(0,Number(e.m)||0)},0));
- var avg=t/N(),wrongTime=E.reduce(function(a,e,i){return a+(e.r==='Incorrect'?Number(S.q[i].t)||0:0)},0);
- var correctTime=E.reduce(function(a,e,i){return a+(e.r==='Correct'?Number(S.q[i].t)||0:0)},0);
- var avgAttempt=attempted?Math.round(t/attempted):0;
- var strongest=sm.subs.slice().sort(function(a,b){return (b.m/(cfg.per*cfg.pos||1))-(a.m/(cfg.per*cfg.pos||1))})[0];
- var weakest=sm.subs.slice().sort(function(a,b){return (a.m/(cfg.per*cfg.pos||1))-(b.m/(cfg.per*cfg.pos||1))})[0];
- var maxSub=cfg.per*cfg.pos||1;
- var scorePct=Math.round(pct*100);
- var verdict=scorePct>=80?'Strong performance':scorePct>=60?'Solid attempt':scorePct>=40?'Room to build':'Baseline established';
- var verdictSub=scorePct>=80?'High conversion across the paper.':scorePct>=60?'A good base with clear areas to refine.':scorePct>=40?'The attempt gives useful data for the next revision cycle.':'Use this attempt as a diagnostic baseline for the next test.';
- var subs=sm.subs.map(function(x,k){
-   var p=Math.max(0,Math.min(100,x.m/maxSub*100));
-   return '<article class="rc-sub" style="--a:'+COL[k%3]+'"><div class="rc-sub-h"><div><span class="rc-sub-kicker">SECTION '+String(k+1).padStart(2,'0')+'</span><b>'+esc(x.n)+'</b></div><span data-count="'+x.m+'">0</span></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' correct</span><span class="r">'+x.w+' wrong</span><span>'+x.u+' skipped</span><span>'+x.acc+'% accuracy</span><span>'+mm(x.t)+'</span></div></article>';
- }).join('');
- var pal=SUB.map(function(n,k){
-   var s='';
-   for(var i=k*cfg.per;i<Math.min((k+1)*cfg.per,N());i++){
-     var r=E[i].r;
-     s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*12)+'ms" onclick="RCjump('+i+')"><span>'+String(i-k*cfg.per+1).padStart(2,'0')+'</span></button>';
-   }
-   return '<section class="rc-pal-sec"><div class="rc-pal-title"><b>'+esc(n)+'</b><small>'+sm.subs[k].c+' correct · '+sm.subs[k].w+' wrong · '+sm.subs[k].u+' skipped</small></div><div class="rc-pal">'+s+'</div></section>';
- }).join('');
- var rowsHtml=rows(sm);
+ var attempted=c+w,avg=tot?Math.round(t/tot):0,neg=Math.round(-E.reduce(function(a,e){return a+Math.min(0,Number(e.m)||0)},0)*100)/100;
+ var subjectNeed=sm.subs.slice().sort(function(a,b){return a.acc-b.acc})[0];
+ var insight='<div class="rc-insights"><div><small>ATTEMPT RATE</small><b>'+(tot?Math.round(attempted/tot*100):0)+'%</b><span>'+attempted+' of '+tot+' attempted</span></div><div><small>AVG TIME</small><b>'+fmtT(avg)+'</b><span>per question</span></div><div><small>NEGATIVE IMPACT</small><b>−'+neg+'</b><span>estimated from wrong MCQs</span></div><div><small>FOCUS NEXT</small><b>'+esc(subjectNeed?subjectNeed.n:'—')+'</b><span>'+(subjectNeed?subjectNeed.acc+'% accuracy':'Not enough data')+'</span></div></div>';
+ var subs=sm.subs.map(function(x,k){var mx=cfg.per*cfg.pos,p=Math.max(0,x.m)/mx*100;return '<div class="rc-sub" style="--a:'+COL[k%3]+'"><div class="rc-sub-h"><b>'+esc(x.n)+'</b><span data-count="'+x.m+'">0</span></div><div class="rc-bar"><i style="--w:'+p+'%"></i></div><div class="rc-sub-f"><span class="g">'+x.c+' \u2713</span><span class="r">'+x.w+' \u2717</span><span>'+x.u+' \u2014</span><span>'+x.acc+'% acc</span><span>'+mm(x.t)+'</span></div></div>'}).join('');
+ var pal=SUB.map(function(n,k){var s='';for(var i=k*cfg.per;i<(k+1)*cfg.per;i++){var r=E[i].r;s+='<button class="rc-c '+(r==='Correct'?'ok':r==='Incorrect'?'bad':'na')+'" style="--d:'+((i-k*cfg.per)*18)+'ms" onclick="RCjump('+i+')">'+(i-k*cfg.per+1)+'</button>'}return '<div class="rc-pal-sec"><small style="color:'+COL[k%3]+'">'+esc(n)+'</small><div class="rc-pal">'+s+'</div></div>'}).join('');
  var seg=function(v,cl){return '<i class="'+cl+'" style="--w:'+(v/tot*100)+'%"></i>'};
- var insightData=[
-   ['Attempt rate',attemptRate+'%',attempted+' of '+N()+' questions answered',''],
-   ['Accuracy',sm.acc+'%',attempted?'Calculated on attempted questions':'No attempted questions',''],
-   ['Negative marks',neg+'',w+' incorrect responses affected the score','bad'],
-   ['Avg / question',fmtT(Math.round(avg)), 'Across the full paper','']
- ];
- var insights=insightData.map(function(x){return '<div class="rc-metric '+x[3]+'"><span>'+x[0]+'</span><b>'+x[1]+'</b><small>'+x[2]+'</small></div>'}).join('');
- var paceInsight=attempted?('You spent '+fmtT(Math.round(avgAttempt))+' on each attempted question on average; wrong answers consumed '+fmtT(Math.round(wrongTime))+' in total.'):('No attempted questions were recorded.');
- var focus='<div class="rc-focus-grid"><div class="rc-focus"><span class="rc-focus-icon">↗</span><div><small>HIGHEST SCORING SECTION</small><b>'+esc(strongest?strongest.n:'—')+'</b><p>'+ (strongest?strongest.m+' marks · '+strongest.acc+'% accuracy':'No section data')+'</p></div></div><div class="rc-focus warn"><span class="rc-focus-icon">↘</span><div><small>LOWEST SCORING SECTION</small><b>'+esc(weakest?weakest.n:'—')+'</b><p>'+ (weakest?weakest.m+' marks · '+weakest.acc+'% accuracy':'No section data')+'</p></div></div></div>';
- return '<div class="rc-result-head"><div><span class="rc-eyebrow">POST-TEST ANALYSIS</span><h2>Result dashboard</h2><p>Score, section performance and question-level evidence — all in one view.</p></div><div class="rc-head-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions PDF</button>':'')+'<button class="rc-btn solid" onclick="downloadResponses()">Response sheet</button></div></div>'+
- '<section class="rc-scoreboard"><div class="rc-score-main"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><defs><linearGradient id="rgScore" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7ffb8"/><stop offset="1" stop-color="#86ff3f"/></linearGradient></defs><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff0b" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rgScore)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pct))+'" transform="rotate(-90 65 65)"/></svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+' marks</span></div></div><div class="rc-score-copy"><span class="rc-status">'+verdict+'</span><h3>'+esc(S.type||'Test')+'</h3><p>'+verdictSub+' <span>'+esc(S.name||'Student')+'</span> · '+esc(S.date||'')+'</p><div class="rc-score-line"><b>'+scorePct+'%</b><span>overall score</span></div></div></div><div class="rc-metrics">'+insights+'</div></section>'+
- '<div class="rc-dist-wrap"><div class="rc-section-label"><b>Answer distribution</b><span>'+attempted+' attempted · '+u+' unattempted</span></div><div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div><div class="rc-legend"><span class="ok">Correct <b>'+c+'</b></span><span class="bad">Incorrect <b>'+w+'</b></span><span class="na">Unattempted <b>'+u+'</b></span></div></div>'+
- '<section class="rc-analysis"><div class="rc-section-label"><div><b>Performance analysis</b><small>What the numbers say about this attempt</small></div></div>'+focus+'<div class="rc-insight-card"><div class="rc-insight-top"><span>TIME &amp; ATTEMPT PATTERN</span><b>'+paceInsight+'</b></div><div class="rc-time-track"><i style="--w:'+(attempted?Math.min(100,correctTime/Math.max(t,1)*100):0)+'%"></i><i class="wrong" style="--w:'+(attempted?Math.min(100,wrongTime/Math.max(t,1)*100):0)+'%"></i></div><div class="rc-time-key"><span><i></i> time on correct</span><span><i class="wrong"></i> time on wrong</span><span><i class="rest"></i> remaining</span></div></div></section>'+
- '<section class="rc-subject-section"><div class="rc-section-label"><div><b>Subject breakdown</b><small>Marks, accuracy, attempts and time by subject</small></div></div><div class="rc-subs">'+subs+'</div></section>'+
- '<section class="rc-palette-card"><div class="rc-section-label"><div><b>Question map</b><small>Jump directly to any question below</small></div><div class="rc-legend compact"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div></div>'+pal+'</section>'+
- '<section class="rc-review-section"><div class="rc-section-label"><div><b>Question-by-question review</b><small>Your response compared with the official key</small></div><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div></div><div id="rcList" class="rc-list">'+rowsHtml+'</div></section>';
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Your Result</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions PDF</button>' +(RC.correction?'<button class="rc-btn correction" onclick="RCcorrections()">Corrections PDF</button>':''):'')+'<button class="rc-btn" onclick="downloadReport()">Response sheet</button></span></div>'+
+ '<div class="rc-hero"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pct))+'" transform="rotate(-90 65 65)">'+'</circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div>'+
+ '<div class="rc-stats"><div class="s ok"><b data-count="'+c+'">0</b><span>Correct</span></div><div class="s bad"><b data-count="'+w+'">0</b><span>Incorrect</span></div><div class="s na"><b data-count="'+u+'">0</b><span>Unattempted</span></div><div class="s"><b data-count="'+sm.acc+'" data-suf="%">0</b><span>Accuracy</span></div><div class="s wide"><b>'+fmtT(t)+'</b><span>Time on questions</span></div></div></div>'+
+ insight+'<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+
+ '<div class="rc-subs">'+subs+'</div>'+
+ '<h3 class="rc-h3">Question palette</h3><div class="rc-legend"><span class="ok">Correct</span><span class="bad">Incorrect</span><span class="na">Unattempted</span></div>'+pal+
+ '<h3 class="rc-h3">Question-by-question report</h3><div class="rc-filters">'+[['all','All'],['Correct','Correct'],['Incorrect','Incorrect'],['Unattempted','Unattempted']].map(function(f){return '<button class="'+(RC.filter===f[0]?'on':'')+'" onclick="RCfilter(\''+f[0]+'\')">'+f[1]+'</button>'}).join('')+'</div><div id="rcList" class="rc-list">'+rows(sm)+'</div>'
 }
 function rows(sm){
  var E=sm.E,h='',n=0;

@@ -61,7 +61,7 @@
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
+    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,multiple_correct,paper_url,enabled,archived').eq('enabled',true).eq('archived',false).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=data||[];
     try{const uid=sessionData.session.user.id,{data:at}=await sb.from('attempts').select('test_id,status').eq('user_id',uid).eq('status','submitted');doneMap={};(at||[]).forEach(a=>{doneMap[a.test_id]=(doneMap[a.test_id]||0)+1})}catch(e){console.warn('Attempt counts unavailable',e.message)}
@@ -81,7 +81,7 @@
       if(error||!sign?.signedUrl){console.error('Paper access failed:',error);throw new Error('Could not open the question paper. This is usually a paper-access permission on our side, not your device. Please refresh and try again, or contact support.')}
       const total=Number(t.total_questions)||75;
       if(total%3!==0)throw new Error('This test has '+total+' questions. The current NTA CBT engine requires a total divisible by 3.');
-      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');window._t=t.name;
+      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;S.multiCorrect=t.multiple_correct===true;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');window._t=t.name;
       closeM();
       if(pdfUrl)try{URL.revokeObjectURL(pdfUrl)}catch(e){}
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
