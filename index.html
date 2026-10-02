@@ -7,6 +7,7 @@
 <meta name="twitter:card" content="summary"><meta name="twitter:title" content="MDCCCVII Tests"><meta name="twitter:description" content="Scheduled JEE mock tests with live rankings.">
 <script>try{var t=JSON.parse(localStorage.getItem("md_theme")||'"dark"');document.documentElement.dataset.theme=t==="light"?"light":"dark"}catch(e){}</script>
 <script>(function(){try{var n=navigator,c=n.connection||{},low=(n.deviceMemory&&n.deviceMemory<=4)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||c.saveData||/2g/.test(c.effectiveType||'')||localStorage.getItem('md_lite')==='1';if(localStorage.getItem('md_lite')==='0')low=false;if(low){document.documentElement.classList.add('lite');var mm=window.matchMedia.bind(window);window.matchMedia=function(q){return /prefers-reduced-motion/.test(q)?{matches:true,media:q,addEventListener:function(){},removeEventListener:function(){},addListener:function(){},removeListener:function(){}}:mm(q)}}}}catch(e){}})()</script>
+<script>try{if(localStorage.getItem("md_lb_visible")==="0")document.documentElement.classList.add("lb-off")}catch(e){}</script>
 <link rel="icon" href="assets/favicon.png?v=7" type="image/png">
 <link rel="shortcut icon" href="assets/favicon.png?v=7" type="image/png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -29,6 +30,7 @@
 <link rel="stylesheet" href="css/home-hero.css?v=3">
 <link rel="stylesheet" href="css/cbt-theme.css?v=1">
 <link rel="stylesheet" href="css/lite.css?v=1">
+<link rel="stylesheet" href="css/lb-visibility.css?v=1">
 </head><body>
 <canvas id="mdfx" aria-hidden="true"></canvas>
 <div class="md-cursor" aria-hidden="true"></div><div class="md-cursor md-cursor-2" aria-hidden="true"></div>
@@ -122,7 +124,8 @@
 <script defer src="js/analysis.js"></script>
 <script defer src="js/auth.js"></script>
 <script defer src="js/backend-tests.js?v=20"></script>
-<script defer src="js/leaderboard.js"></script>
+<script defer src="js/leaderboard.js?v=2"></script>
+<script defer src="js/lb-visibility.js?v=1"></script>
 <script defer src="js/motion.js"></script>
 <script defer src="js/mdcccvii-v3.js"></script>
 <script defer src="js/pro-fx.js"></script>
@@ -173,7 +176,7 @@
   });
   window.addEventListener('appinstalled',()=>{installed=true;close();buttons.forEach(b=>b.textContent='App Installed');});
   if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true){installed=true;buttons.forEach(b=>{b.textContent='App Installed';b.disabled=true;});}
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=7').catch(()=>{});
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=8').catch(()=>{});
 })();
 </script>
 </body></html>
