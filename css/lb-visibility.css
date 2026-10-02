@@ -1,0 +1,8 @@
+/* Applied when an admin hides the leaderboard — removes it everywhere on the student site */
+html.lb-off #leaderboard,
+html.lb-off .x-links a[href="#leaderboard"],
+html.lb-off .hx-cta a[href="#leaderboard"],
+html.lb-off .x-foot a[href="#leaderboard"],
+html.lb-off .hx-c.c3,
+html.lb-off .hx-chip.b,
+html.lb-off .x-bento .bn:has(.v-bars){display:none !important}

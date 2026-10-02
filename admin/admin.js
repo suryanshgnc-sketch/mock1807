@@ -30,7 +30,7 @@ function openAdminRole(id,name,isAdmin){$('#adminModalInfo').textContent=isAdmin
 async function changeAdminRole(id,isAdmin){$('#adminModalConfirm').disabled=true;try{const {error}=await db.rpc('admin_set_admin',{p_user_id:id,p_make_admin:!isAdmin});if(error)throw error;toast(isAdmin?'Admin access removed':'Admin access granted');closeAdminModal();await loadAll();await loadAdmins()}catch(e){$('#adminModalError').textContent=e.message||String(e);show('#adminModalError')}finally{$('#adminModalConfirm').disabled=false}}
 function closeAdminModal(){$('#adminModal').classList.add('hidden');$('#adminModal').setAttribute('aria-hidden','true')}
 async function loadAudit(){const {data,error}=await db.rpc('admin_audit',{limit_count:200});if(error)throw error;const rows=data||[];$('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">SECURITY & HISTORY</div><h2>Admin audit log</h2><p class="muted">Every sensitive administrative action is recorded here.</p></div></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${formatDate(r.created_at)}</td><td><b>${esc(r.action)}</b></td><td>${esc(r.target_type||'')} · ${esc(r.target_id||'')}</td><td><code>${esc(JSON.stringify(r.details||{}))}</code></td></tr>`).join('')||'<tr><td colspan="4">No audit events yet.</td></tr>'}</tbody></table></div>`}
-async function render(){try{if(current==='overview')await loadOverview();else if(current==='tests')await loadTests();else if(current==='students')await loadStudents();else if(current==='attempts')await loadAttempts();else if(current==='analytics'){await loadAll();$('#content').innerHTML=analyticsView()}else if(current==='audit'){await loadAudit()}else if(current==='admins'){await loadAdmins()}wireDynamicButtons()}catch(e){$('#content').innerHTML=`<div class="hero"><h2 class="danger">Dashboard error</h2><p class="muted">${esc(e.message||e)}</p></div>`}}
+async function render(){try{if(current==='overview')await loadOverview();else if(current==='tests')await loadTests();else if(current==='students')await loadStudents();else if(current==='attempts')await loadAttempts();else if(current==='analytics'){await loadAll();$('#content').innerHTML=analyticsView()}else if(current==='audit'){await loadAudit()}else if(current==='admins'){await loadAdmins()}else if(current==='site'){await loadSite()}wireDynamicButtons()}catch(e){$('#content').innerHTML=`<div class="hero"><h2 class="danger">Dashboard error</h2><p class="muted">${esc(e.message||e)}</p></div>`}}
 function setView(v){current=v;document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.view===v));const btn=document.querySelector(`.nav[data-view="${v}"]`);$('#viewTitle').textContent=btn?.textContent||v;render()}
 function resetTestForm(){const f=$('#testForm');f.reset();const __b=$('#createTestBtn');if(__b)__b.disabled=false;const __u=$('#uploadProgress');if(__u)__u.classList.add('hidden');['duration','questions','totalMarks','positive','negativeA','negativeB'].forEach(n=>{if(f.elements[n]){f.elements[n].disabled=false;f.elements[n].readOnly=false}});if(f.elements.paper)f.elements.paper.disabled=false;$('#testForm').dataset.editId='';$('#testModalEyebrow').textContent='TEST BUILDER';$('#testModalTitle').textContent='Create new test';$('#createTestBtn').textContent='Create & Schedule Test';$('#paperHint').textContent='Required when creating a test. Leave empty while editing to keep the current paper.';$('#keyHint').textContent='Required when creating a test. Leave empty while editing to keep the current key.';hide('#uploadProgress');hide('#formError')}
 function openCreateModal(){resetTestForm();const d=new Date(Date.now()+3600000);d.setSeconds(0,0);$('#testForm').elements.namedItem('release').value=localInput(d.toISOString());$('#modal').classList.remove('hidden');$('#modal').setAttribute('aria-hidden','false')}
@@ -78,3 +78,23 @@ $('#purgeGo').addEventListener('click',purgeTest);
 document.querySelectorAll('[data-close-purge]').forEach(b=>b.addEventListener('click',closePurge));
 /* ---- Theme (shared with the student site via localStorage md_theme) ---- */
 $('#themeBtn').addEventListener('click',()=>{const n=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=n;try{localStorage.setItem('md_theme',JSON.stringify(n))}catch(e){}});
+
+
+/* ---- Site controls: show / hide the public leaderboard (admin only, enforced by the database) ---- */
+async function loadSite(){
+  let visible=true,known=true;
+  try{const {data,error}=await db.rpc('get_leaderboard_visibility');if(error)throw error;visible=data!==false}
+  catch(e){known=false}
+  const note=known?'':'<p class="muted" style="color:#ff8585">Leaderboard switch is not installed yet. Run <code>sql/LEADERBOARD-VISIBILITY.sql</code> once in the Supabase SQL Editor.</p>';
+  $('#content').innerHTML=`<div class="hero"><div><div class="eyebrow">SITE CONTROLS</div><h2>Leaderboard visibility</h2><p class="muted">When hidden, the Rankings section, its menu links and the leaderboard cards disappear from the student site within about 30 seconds. Rankings and scores are not deleted — switch it back on any time.</p>${note}</div></div>
+  <div class="admin-banner"><div><b>Leaderboard is currently ${visible?'VISIBLE':'HIDDEN'}</b><span>${visible?'Students can see rankings.':'Students cannot see rankings.'}</span></div>
+  <button id="lbToggle" class="${visible?'mini danger-outline':'primary small'}" ${known?'':'disabled'}>${visible?'Hide leaderboard':'Show leaderboard'}</button></div>`;
+  const b=$('#lbToggle');
+  if(b)b.addEventListener('click',async()=>{
+    const next=!visible;
+    if(!next&&!confirm('Hide the leaderboard from all students?'))return;
+    b.disabled=true;
+    try{const {error}=await db.rpc('admin_set_leaderboard_visible',{p_visible:next});if(error)throw error;toast(next?'Leaderboard is now visible':'Leaderboard hidden from students');await loadSite()}
+    catch(e){toast(e.message||String(e));b.disabled=false}
+  });
+}

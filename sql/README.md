@@ -13,5 +13,6 @@ Safe to re-run. Requires your existing `tests`, `attempts`, `answers`, `profiles
 | 7 | run-in-order/07-admin-roles.sql | promote/demote admins |
 | 8 | run-in-order/08-admin-hierarchy.sql | owner / admin / moderator hierarchy (oldest existing admin becomes owner automatically) |
 | 9 | run-in-order/09-student-access-and-reattempt-FINAL.sql | students see their own results forever + re-attempt rule |
+| 10 | LEADERBOARD-VISIBILITY.sql | **NEW** — admin switch to show/hide the leaderboard (Admin → Site Controls) |
 
 `archive/` = older overlapping scripts. Do NOT run them.

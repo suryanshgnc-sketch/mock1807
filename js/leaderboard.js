@@ -617,6 +617,12 @@
     }
 
 
+    /* Admin has hidden the leaderboard: don't fetch anything. */
+    if (document.documentElement.classList.contains('lb-off')) {
+      return;
+    }
+
+
     /*
      * Prevent overlapping requests.
      */
@@ -1268,6 +1274,12 @@
      */
 
     startLiveRefresh();
+
+    window.addEventListener('md:lb-visibility', (e) => {
+      if (e.detail && e.detail.visible !== false) {
+        loadTests().finally(() => loadLeaderboard(true));
+      }
+    });
   }
 
 
