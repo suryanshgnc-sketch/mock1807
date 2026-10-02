@@ -15,7 +15,7 @@ const PROFILE_KEY='nta_profile';
 function getProfile(){return Store.get(PROFILE_KEY,{name:'',photo:''})}
 function profileSetup(force=false){
  const u=window.mock1807Auth?.user||null, m=u?.user_metadata||{}, p=getProfile();
- const name=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'Candidate';
+ const name=u?.email||p.name||'Candidate';
  const email=u?.email||''; const photo=m.avatar_url||m.picture||p.photo||'';
  const initials=String(name).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M';
  modal(`<div class="account-shell account-modern">
@@ -37,6 +37,7 @@ function previewProfilePhoto(f){
  const r=new FileReader();r.onload=()=>$('#photoPreview').innerHTML=`<img src="${r.result}" alt="Candidate photo">`;r.readAsDataURL(f);
 }
 function saveProfile(){
+ return; /* names are locked: set by admin / equal to the account email */
  const name=$('#profileName').value.trim();
  if(!name)return alert('Please enter your name.');
  const p=getProfile();p.name=name;
@@ -415,7 +416,7 @@ function count(el,to,suf){
 function home(){
  const p=getProfile();
  const pb=$('#profileBanner'),profileChipEl=$('#profileChip');
- if(profileChipEl){const u=window.mock1807Auth?.user,m=u?.user_metadata||{},nm=m.full_name||m.name||p.name||u?.email?.split('@')[0]||'';const ph=m.avatar_url||m.picture||p.photo||'';const ini=esc(String(nm).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M');profileChipEl.innerHTML=nm?`<span class="profile-chip">${ph?`<img src="${esc(ph)}" alt="">`:`<span class="profile-fallback">${ini}</span>`}</span>`:'';}
+ if(profileChipEl){const u=window.mock1807Auth?.user,m=u?.user_metadata||{},nm=u?.email||p.name||'';const ph=m.avatar_url||m.picture||p.photo||'';const ini=esc(String(nm).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'M');profileChipEl.innerHTML=nm?`<span class="profile-chip">${ph?`<img src="${esc(ph)}" alt="">`:`<span class="profile-fallback">${ini}</span>`}</span>`:'';}
  if(pb)pb.innerHTML=p.name?`<div class="profile-mini">${p.photo?`<img src="${p.photo}" alt="">`:'<span class="avatar-fallback">N</span>'}<div><b>${esc(p.name)}</b><span>Candidate profile saved · reused automatically in every test</span></div><button class="gbtn" onclick="profileSetup()">Edit</button></div>`:`<div class="profile-mini"><span class="avatar-fallback">?</span><div><b>Set up your candidate profile</b><span>Your name is asked once and reused for every test.</span></div><button class="pbtn" onclick="profileSetup()">Set up</button></div>`;
  const ss=Store.get('nta_sess'),rb=$('#resumeBox');rb.hidden=!(ss&&!ss.done);
  if(!rb.hidden)rb.innerHTML=`<span>⏱ <b>Test in progress:</b> ${esc(ss.type||'Test')} – ${esc(ss.name)}</span><button class="pbtn" onclick="resume()">Resume</button><button class="gbtn" onclick="localStorage.removeItem('nta_sess');home()">Discard</button>`;

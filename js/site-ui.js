@@ -8,7 +8,7 @@
   function googleProfile(){
     const u=googleUser(), m=u?.user_metadata||{};
     const fallback=typeof getProfile==='function'?getProfile():{name:'',photo:''};
-    const name=m.full_name||m.name||fallback.name||u?.email?.split('@')[0]||'Candidate';
+    const name=u?.email||fallback.name||'Candidate';
     const photo=m.avatar_url||m.picture||fallback.photo||'';
     return {name,photo,email:u?.email||'',provider:'Google'};
   }
