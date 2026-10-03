@@ -50,7 +50,8 @@ window.RCsolutions=async function(){
   if(r.error||!r.data)throw r.error||new Error('missing');if(w)w.location=r.data.signedUrl;else location.href=r.data.signedUrl}
  catch(e){if(w)w.close();alert('The key / solutions PDF is not available for this test yet.')}
 };
-function pdfBtns(){return '<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions (PDF)</button>':'')}
+function paperBtn(){return S.backendTestId?'<button class="rc-btn" onclick="downloadQuestionPaper()">Download question paper</button>':''}
+function pdfBtns(){return paperBtn()+'<button class="rc-btn" onclick="downloadResponses()">Download response sheet</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Key &amp; solutions (PDF)</button>':'')}
 /* ---- views ---- */
 function vLoading(){return '<div class="rc-center">'+ILL.lock+'<h2>Checking the vault\u2026</h2><div class="rc-scan"><i></i></div></div>'}
 function vLocked(){
@@ -66,7 +67,7 @@ function tabs(){return '<div class="rc-tabs">'+SUB.map(function(n,k){return '<bu
 function vKey(){
  var per=cfg.per,a=RC.sec*per,h='';
  for(var i=a;i<a+per;i++){var yr=S.q[i].a;h+='<div class="rc-chip'+(isNum(i)?' num':'')+'" style="--d:'+((i-a)*22)+'ms"><span>Q'+(i-a+1)+'</span><b>'+esc(disp(i,S.key[i]))+'</b><small>'+(yr===''?'not attempted':'you: '+esc(disp(i,yr)))+'</small></div>'}
- return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><span class="rc-actions">'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></span></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">\u2190 Back</button><h2>Official Answer Key</h2><span class="rc-actions">'+paperBtn()+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn solid" onclick="RCcheck()">Check Automatically</button></span></div>'+tabs()+'<div class="rc-keygrid">'+h+'</div><p class="rc-note">Numerical answers are highlighted. Key shown exactly as published by the admin.</p>'
 }
 function pct(n,d){return d?Math.max(0,Math.min(100,Math.round(n/d*100))):0}
 function resultSignals(sm){
@@ -109,7 +110,7 @@ function vResult(){
  var dnaHtml=dna.map(function(x,k){return '<div class="rc-dna"><div><span>'+esc(x.n)+'</span><b>'+Math.round(x.v)+'</b></div><i><b style="--w:'+Math.round(x.v)+'%"></b></i></div>'}).join('');
  var insightHtml=ins.map(function(x){return '<li>'+esc(x)+'</li>'}).join('');
  var subjectFocus=sm.subs.slice().sort(function(a,b){return a.acc-b.acc}).slice(0,2).map(function(x){return '<span><b>'+esc(x.n)+'</b><small>'+x.acc+'% accuracy · '+x.w+' incorrect</small></span>'}).join('');
- return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">← Back</button><h2>Your Result</h2><span class="rc-actions"><button class="rc-btn" onclick="RCview(\'key\')">View Answer Key</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn" onclick="downloadReport()">Download response sheet</button></span></div>'+ 
+ return '<div class="rc-sec-head"><button class="rc-back" onclick="RCview(\'home\')">← Back</button><h2>Your Result</h2><span class="rc-actions">'+paperBtn()+'<button class="rc-btn" onclick="RCview(\'key\')">View Answer Key</button>'+(S.backendTestId?'<button class="rc-btn" onclick="RCsolutions()">Solutions (PDF)</button>':'')+'<button class="rc-btn" onclick="downloadReport()">Download response sheet</button></span></div>'+ 
  '<div class="rc-hero"><div class="rc-ringwrap"><svg viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#ffffff12" stroke-width="10"/><circle id="rcArc" cx="65" cy="65" r="54" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+CIRC+'" stroke-dashoffset="'+CIRC+'" data-to="'+(CIRC*(1-pctScore))+'" transform="rotate(-90 65 65)"></circle>'+DEFS+'</svg><div class="rc-ringtxt"><b data-count="'+sm.score+'">0</b><span>of '+max+'</span></div></div>'+ 
  '<div><div class="rc-hero-copy"><span class="rc-eyebrow">ANALYSIS READY</span><h3>'+esc(S.type||'Test')+'</h3><p>'+esc(S.date||'')+' · '+esc(S.name||'Student')+'</p></div><div class="rc-stats"><div class="s ok"><b data-count="'+c+'">0</b><span>Correct</span></div><div class="s bad"><b data-count="'+w+'">0</b><span>Incorrect</span></div><div class="s na"><b data-count="'+u+'">0</b><span>Unattempted</span></div><div class="s"><b data-count="'+sm.acc+'" data-suf="%">0</b><span>Accuracy</span></div><div class="s wide"><b>'+fmtT(t)+'</b><span>Total time on questions</span></div></div></div></div>'+ 
  '<div class="rc-dist">'+seg(c,'ok')+seg(w,'bad')+seg(u,'na')+'</div>'+ 

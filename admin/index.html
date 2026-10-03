@@ -65,6 +65,7 @@
           <label>Release date & time<input name="release" type="datetime-local" required></label>
           <label>Total questions<input name="questions" type="number" min="1" value="75" required></label>
           <label>Total marks<input name="totalMarks" type="number" min="1" step="0.5" value="300" required></label>
+          <label class="wide">Subject order<select name="subjectOrder"><option value="PCM">Physics → Chemistry → Mathematics</option><option value="PMC">Physics → Mathematics → Chemistry</option><option value="CPM">Chemistry → Physics → Mathematics</option><option value="CMP">Chemistry → Mathematics → Physics</option><option value="MPC">Mathematics → Physics → Chemistry</option><option value="MCP">Mathematics → Chemistry → Physics</option></select><small>Order of sections in the paper and CBT (questions are split equally; the answer key must follow the same order). Locked once a student has attempted.</small></label>
           <label>Re-attempts allowed<input name="reattempts" type="number" min="0" max="50" step="1" value="0" required><small>0 = one attempt total. 2 = up to 3 attempts.</small></label>
           <label>Leaderboard<select name="leaderboard"><option value="true">Include this test</option><option value="false">Exclude this test</option></select><small>Excluded tests never appear in rankings.</small></label>
           <label>Marks / correct<input name="positive" type="number" min="0" step="0.5" value="4" required></label>

@@ -21,6 +21,20 @@
     return data.signedUrl;
   }
   function style(){}
+  function ordOf(t){const o=String(t?.subject_order||'PCM');return /^(PCM|PMC|CPM|CMP|MPC|MCP)$/.test(o)?o:'PCM'}
+  async function downloadPaper(testId){
+    try{
+      const t=tests.find(x=>Number(x.id)===Number(testId));
+      if(!t||!t.paper_url)throw new Error('The question paper is not available.');
+      const raw=String(t.paper_url).trim();
+      if(/^https?:\/\//i.test(raw)){window.open(raw,'_blank','noopener');return}
+      const fname=(t.name||'Question Paper').replace(/[\\/:*?"<>|]+/g,'-')+' - Question Paper.pdf';
+      const {data,error}=await sb.storage.from(BUCKET).createSignedUrl(raw,600,{download:fname});
+      if(error||!data?.signedUrl)throw (error||new Error('Could not prepare the download.'));
+      const a=document.createElement('a');a.href=data.signedUrl;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    }catch(e){alert(e.message||'Could not download the question paper.')}
+  }
+  window.downloadQuestionPaper=async function(){if(S?.backendTestId)return downloadPaper(S.backendTestId);alert('Question paper is available for scheduled tests only.')};
   function container(){return $('#backendTests')}
   function tz(v){return new Date(v).toLocaleString([], {weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}
   function tiles(ms){const p=parts(ms);return [['d',p.d,'Days'],['h',p.h,'Hrs'],['m',p.m,'Min'],['s',p.s,'Sec']].map(([k,v,l])=>`<div><b data-u="${k}">${String(v).padStart(2,'0')}</b><small>${l}</small></div>`).join('')}
@@ -32,7 +46,8 @@
     const canRetry=st.can_reattempt===true;
     if(latestId){
       const retry=(r&&canRetry)?`<button class="bt-btn alt" data-backend-test="${esc2(t.id)}">Re-attempt</button>`:'';
-      return `<div class="bt-dual">${result}${retry}</div>`;
+      const paper=t.paper_url?`<button class="bt-btn alt" data-bt-paper="${esc2(t.id)}">Download question paper</button>`:'';
+      return `<div class="bt-dual">${result}${retry}${paper}</div>`;
     }
     if(!r)return `<button class="bt-btn" disabled>Locked until start time</button>`;
     return `<button class="bt-btn" data-backend-test="${esc2(t.id)}">${Number(st.attempts_used||0)>0?'Resume test':'Start test'}</button>`;
@@ -56,6 +71,7 @@
     const feat=nx?`<article class="nt"><div><span class="bt-pill">Next up</span><h3>${esc2(nx.name)}</h3><p>${tz(nx.release_at)} · ${Number(nx.duration_minutes)||180} min · ${Number(nx.total_questions)||0} questions · ${Number(nx.total_marks)||0} marks</p><a class="bt-cal" href="${calLink(nx)}" target="_blank" rel="noopener">+ Add to calendar</a></div><div class="cd" data-cd="${esc2(nx.id)}"><span>Opens in</span><div class="cd-t big">${tiles(new Date(nx.release_at)-Date.now())}</div></div></article>`:'';
     box.innerHTML=feat+live.map(card).join('')+up.slice(1).map(card).join('');
     box.querySelectorAll('[data-backend-test]').forEach(b=>b.addEventListener('click',()=>launch(Number(b.dataset.backendTest))));
+    box.querySelectorAll('[data-bt-paper]').forEach(b=>b.addEventListener('click',()=>downloadPaper(Number(b.dataset.btPaper))));
     box.querySelectorAll('[data-bt-result]').forEach(b=>b.addEventListener('click',()=>openBackendResult(Number(b.dataset.btResult),Number(b.dataset.btAttempt))));
   }
   async function openBackendResult(testId,attemptId){
@@ -79,7 +95,7 @@
       cfg.pos=Number(rows[0].positive_marks??t?.positive_marks??4);
       cfg.negA=Number(rows[0].negative_mcq??t?.negative_mcq??1);
       cfg.negB=Number(rows[0].negative_numerical??t?.negative_numerical??1);
-      setOrder('PCM');
+      setOrder(ordOf(t));
       const prof=getProfile();
       const key=keyPublished?rows.map(x=>String(x.correct_response??'')):[];
       const answers=rows.map(x=>String(x.response??''));
@@ -91,7 +107,7 @@
         roll:'',
         cur:0,done:true,mode:'A',key,keyFromServer:true,man:[],
         date:rows[0].submitted_at?new Date(rows[0].submitted_at).toLocaleString():new Date().toLocaleString(),
-        per,order:'PCM',backendTestId:testId,backendAttemptId:attemptId||Number(rows[0].attempt_id),
+        per,order:cfg.order,backendTestId:testId,backendPaperPath:t?.paper_url||'',backendAttemptId:attemptId||Number(rows[0].attempt_id),
         maxMarks:Number(rows[0].max_score??t?.total_marks??(Number(rows[0].total_questions||75)*cfg.pos)),
         positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,
         q:answers.map((a,i)=>({a,s:a===''?1:2,t:0}))
@@ -113,7 +129,7 @@
     if(!sb){box.innerHTML='<div class="bt-error">Unable to connect right now. Please refresh the page.</div>';return}
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){box.innerHTML='<div class="bt-empty">Please sign in to see scheduled tests.</div>';return}
-    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').eq('enabled',true).order('release_at',{ascending:true});
+    const {data,error}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived,subject_order').eq('enabled',true).order('release_at',{ascending:true});
     if(error){console.error(error);box.innerHTML=`<div class="bt-error">We could not load the tests. Please try again in a moment.</div>`;return}
     tests=(data||[]).filter(t=>!t.archived);
     statusMap={};
@@ -124,7 +140,7 @@
       // keep archived/disabled tests visible if the student already has a result (results are permanent)
       const missing=(st||[]).filter(x=>x.has_submitted&&!tests.some(t=>Number(t.id)===Number(x.test_id))).map(x=>x.test_id);
       if(missing.length){
-        const {data:old}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived').in('id',missing);
+        const {data:old}=await sb.from('tests').select('id,name,description,release_at,duration_minutes,total_questions,total_marks,positive_marks,negative_mcq,negative_numerical,reattempt_limit,leaderboard_enabled,paper_url,enabled,archived,subject_order').in('id',missing);
         (old||[]).forEach(t=>tests.push(t));
       }
     }catch(e){console.warn('Attempt status unavailable',e.message)}
@@ -144,11 +160,11 @@
       if(error||!sign?.signedUrl){console.error('Paper access failed:',error);throw new Error('Could not open the question paper. This is usually a paper-access permission on our side, not your device. Please refresh and try again, or contact support.')}
       const total=Number(t.total_questions)||75;
       if(total%3!==0)throw new Error('This test has '+total+' questions. The current NTA CBT engine requires a total divisible by 3.');
-      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder('PCM');window._t=t.name;
+      cfg.per=total/3;cfg.dur=Number(t.duration_minutes)||180;cfg.pos=Number(t.positive_marks??4);cfg.negA=Number(t.negative_mcq??1);cfg.negB=Number(t.negative_numerical??1);setOrder(ordOf(t));window._t=t.name;
       closeM();
       if(pdfUrl)try{URL.revokeObjectURL(pdfUrl)}catch(e){}
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
-      S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:'PCM',backendTestId:t.id,backendPaperPath:t.paper_url,maxMarks:Number(t.total_marks)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:total},()=>({a:'',s:0,t:0}))};
+      S={id:Date.now(),type:t.name,name:p.name,photo:p.photo,roll:'',cur:0,done:false,mode:'A',key:[],man:[],date:new Date().toLocaleString(),per:cfg.per,order:cfg.order,backendTestId:t.id,backendPaperPath:t.paper_url,maxMarks:Number(t.total_marks)||total*cfg.pos,positiveMarks:cfg.pos,negativeMcq:cfg.negA,negativeNumerical:cfg.negB,endAt:Date.now()+cfg.dur*60000,q:Array.from({length:total},()=>({a:'',s:0,t:0}))};
       S.q[0].s=1;
       const started=await createAttempt(t);
       if(!started){S=null;return;}
@@ -258,7 +274,7 @@
       const {data:sign,error:se}=await sb.storage.from(BUCKET).createSignedUrl(t.paper_url,60*60*8);
       if(se||!sign?.signedUrl)throw se||new Error('Could not reopen the question paper.');
       pdfUrl=sign.signedUrl;pdfName=t.name+' · Question Paper.pdf';
-      cfg.per=(Number(row.total_questions)||75)/3;cfg.dur=Number(row.duration_minutes)||180;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);setOrder('PCM');
+      cfg.per=(Number(row.total_questions)||75)/3;cfg.dur=Number(row.duration_minutes)||180;cfg.pos=Number(row.positive_marks);cfg.negA=Number(row.negative_mcq);cfg.negB=Number(row.negative_numerical);setOrder(ordOf(t));
       S.backendAttemptId=row.id;S.serverStartedAt=row.started_at;S.serverExpiresAt=row.expires_at;S.serverDurationMinutes=Number(row.duration_minutes)||cfg.dur;
       S.q=Array.from({length:cfg.per*SUB.length},(_,i)=>({a:'',s:0,t:0}));
       (row.answers||[]).forEach(a=>{const i=Number(a.question_no)-1;if(S.q[i]){S.q[i].a=a.response||'';S.q[i].s=a.marked_for_review?(a.response?4:3):(a.response?2:1);}});
