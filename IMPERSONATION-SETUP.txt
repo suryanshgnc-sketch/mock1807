@@ -1,0 +1,18 @@
+LOG IN AS STUDENT (admin feature)
+
+Needs a one-time Edge Function deploy (it uses the service-role key, which must never be in browser code):
+
+1. Install the Supabase CLI and run:  supabase login   then   supabase link --project-ref grgxaewilmfyvndkcfim
+2. From this project folder run:      supabase functions deploy impersonate
+   (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically.)
+3. Deploy the website, hard-refresh once.
+
+Use: Admin > Students > Manage > "Log in as this student". The student site opens signed in as them
+with an orange "Return to admin" bar. Returning restores your own admin session.
+
+Rules enforced by the function (server side):
+- Caller must be admin or super_admin (moderators cannot).
+- Target must be a student (admins / moderators / owner cannot be impersonated) and not blocked.
+- Every use is written to the admin audit log as "impersonate_start".
+- No email is sent to the student.
+Note: actions taken while impersonating (starting/submitting tests) are real and count toward the student's attempts.

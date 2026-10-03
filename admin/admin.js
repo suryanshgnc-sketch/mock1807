@@ -106,3 +106,26 @@ async function deleteAttempt(id){const a=attemptsCache.find(x=>String(x.id)===St
 async function resetStudentTest(uid,tid){const name=testName(tid);if(!confirm(`Free ALL of this student's attempts on “${name}”? They will get a completely fresh start (rows are kept as abandoned).`))return;const {data,error}=await db.rpc('admin_reset_student_test',{p_user_id:uid,p_test_id:Number(tid),p_reason:'Reset from student panel'});if(error)return toast(error.message);toast(`Freed ${data} attempt${data===1?'':'s'} ✓`);await render();await renderStudentAttemptInfo(uid)}
 async function revokeGrant(gid,uid){if(!confirm('Revoke this extra-attempt grant?'))return;const {error}=await db.rpc('admin_revoke_grant',{p_grant_id:Number(gid)});if(error)return toast(error.message);toast('Grant revoked');await render();await renderStudentAttemptInfo(uid)}
 async function renderStudentAttemptInfo(uid){const box=$('#studentAttemptInfo');if(!box)return;box.innerHTML='<p class="muted">Loading attempt usage…</p>';const aa=attemptsForUser(uid),sub=aa.filter(a=>a.status==='submitted'),best=sub.reduce((m,a)=>Math.max(m,Number(a.score??-Infinity)),-Infinity);const st=$('#studentStats');if(st)st.innerHTML=`<div><b>${aa.length}</b><span>Total attempts</span></div><div><b>${sub.length}</b><span>Submitted</span></div><div><b>${Number.isFinite(best)?best:'—'}</b><span>Best score</span></div>`;const {data:grants,error}=await db.rpc('admin_list_grants',{p_user_id:uid});if(error){box.innerHTML=`<p class="error">${esc(error.message)} — run ADMIN-ATTEMPT-TOOLS.sql in Supabase first.</p>`;return}const gl=grants||[];const ids=new Set([...aa.map(a=>String(a.test_id)),...gl.map(g=>String(g.test_id))]);const rows=[...ids].map(tid=>{const t=testsCache.find(x=>String(x.id)===tid);const used=aa.filter(a=>String(a.test_id)===tid&&(a.status==='submitted'||a.status==='in_progress')).length;const allowed=1+Number(t?.reattempt_limit||0);const extra=gl.filter(g=>String(g.test_id)===tid).reduce((n,g)=>n+g.remaining,0);return `<tr><td>${esc(t?.name||tid)}</td><td>${used} / ${allowed}</td><td>${extra}</td><td class="actions">${used?`<button type="button" class="mini danger-btn js-reset-st" data-tid="${tid}">Reset attempts</button>`:''}</td></tr>`}).join('');box.innerHTML=`<div class="eyebrow" style="margin-top:14px">ATTEMPT USAGE</div>${rows?`<div class="table-wrap"><table><thead><tr><th>Test</th><th>Used / base allowed</th><th>Extra left</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="muted">No attempts or grants yet.</p>'}${gl.length?`<div class="eyebrow" style="margin-top:14px">UNUSED EXTRA ATTEMPTS</div><div class="table-wrap"><table><tbody>${gl.map(g=>`<tr><td>${esc(testName(g.test_id))}</td><td>${g.remaining} left</td><td>${esc(g.note||'')}</td><td>${formatDate(g.created_at)}</td><td><button type="button" class="mini danger-btn js-revoke" data-gid="${g.id}">Revoke</button></td></tr>`).join('')}</tbody></table></div>`:''}<div style="margin-top:12px"><button type="button" class="ghost" id="viewStudentAttempts">View all this student's attempts →</button></div>`;box.querySelectorAll('.js-reset-st').forEach(b=>b.addEventListener('click',()=>resetStudentTest(uid,b.dataset.tid)));box.querySelectorAll('.js-revoke').forEach(b=>b.addEventListener('click',()=>revokeGrant(b.dataset.gid,uid)));$('#viewStudentAttempts').addEventListener('click',()=>{window.__attemptSearch=String(uid);closeStudent();setView('attempts')})}
+
+
+/* ===== Log in as a student (needs the "impersonate" Edge Function, see supabase/functions/impersonate) ===== */
+async function impersonateStudent(){
+  const f=$('#studentForm'),uid=f.id.value,name=(f.name.value||'this student').trim(),btn=$('#impersonateBtn');
+  if(!uid)return;
+  if(!confirm(`Log in as “${name}”?\n\nYou will see the student site exactly as they do. Anything you do (starting or submitting a test) is real and is saved on THEIR account. This action is recorded in the audit log.\n\nUse the orange “Return to admin” bar to come back.`))return;
+  btn.disabled=true;const old=btn.textContent;btn.textContent='Signing in…';
+  try{
+    const {data:sd}=await db.auth.getSession();const cur=sd&&sd.session;
+    if(!cur)throw new Error('Your admin session expired. Please sign in again.');
+    const {data,error}=await db.functions.invoke('impersonate',{body:{user_id:uid}});
+    if(error){let m=error.message;try{const j=await error.context.json();if(j&&j.error)m=j.error}catch(_){ }
+      if(/not found|Failed to send|404/i.test(m))m='The “impersonate” Edge Function is not deployed yet. Run: supabase functions deploy impersonate';
+      throw new Error(m)}
+    if(!data||!data.token_hash)throw new Error((data&&data.error)||'No login token returned.');
+    sessionStorage.setItem('md_admin_return',JSON.stringify({access_token:cur.access_token,refresh_token:cur.refresh_token,admin_id:cur.user.id,admin_email:cur.user.email,student:name}));
+    const {error:ve}=await db.auth.verifyOtp({token_hash:data.token_hash,type:'magiclink'});
+    if(ve){sessionStorage.removeItem('md_admin_return');throw ve}
+    location.href='../';
+  }catch(e){toast(e.message||String(e));btn.disabled=false;btn.textContent=old}
+}
+$('#impersonateBtn').addEventListener('click',impersonateStudent);
