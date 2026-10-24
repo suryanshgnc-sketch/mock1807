@@ -70,3 +70,8 @@ button:active,.btn:active{transform:translateY(0);}
 .role-select{appearance:none;border:1px solid #30363d;background:#15191e;color:#eef2f6;border-radius:10px;padding:9px 12px;font:inherit;font-size:12px;cursor:pointer}
 .role-select:focus{outline:none;border-color:#86ff3f;box-shadow:0 0 0 3px rgba(134,255,63,.08)}
 .owner-lock{font-size:11px;color:#ffd66b;border:1px solid rgba(255,214,107,.22);padding:7px 10px;border-radius:999px}
+
+/* Additive exam configuration panel */
+.config-panel{border:1px solid var(--line,rgba(255,255,255,.12));border-radius:14px;padding:16px;background:rgba(255,255,255,.025)}
+.config-panel>.eyebrow{margin-bottom:12px}
+.config-panel small{display:block;margin-top:10px;line-height:1.55;color:var(--muted,#9aa3b2)}
